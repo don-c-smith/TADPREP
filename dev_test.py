@@ -7,9 +7,16 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
 
+from tadprep.core.transforms import PlotHandler, _build_interactions_core
+
+# import sys
+# import os
+# print(sys.path)
+# print(os.environ.get('PYTHONPATH'))
+
 # FIRST-PASS TESTING
 # Uploading sample datafile
-df_raw = pd.read_csv(r"C:\Users\doncs\Documents\GitHub\TADPREP\data\sample_data_longlean.csv")
+df_raw = pd.read_csv(r"C:\Users\gabor\Desktop\code\TADPREP\data\sample_data_sparse.csv")
 
 # Checking import
 # print(df_raw)
@@ -24,6 +31,65 @@ df_raw = pd.read_csv(r"C:\Users\doncs\Documents\GitHub\TADPREP\data\sample_data_
 # df_reshape = tp.reshape(df_raw, verbose=False)
 # df_reshape = tp.reshape(df_raw, verbose=True)
 # print(df_reshape)
+
+## Uncomment all for latest
+# ## Testing PlotHandler class
+# ph = PlotHandler()
+# age_tuple = ph.det_plot_type(df_raw, 'age')
+# race_tuple = ph.det_plot_type(df_raw, 'race')
+# print(age_tuple)
+# print(race_tuple)
+
+# ph.plot(df_raw, 'age', 'hist')
+# # ph.plot(df_raw, 'race', 'hist')
+# ph.recall_plot('age', 'hist')
+# # ph.recall_plot('race', 'hist')
+# ph.compare_plots('age')
+# # ph.compare_plots('race')
+
+# ph.plot(df_raw, 'age', 'hist')
+# # ph.plot(df_raw, 'race', 'hist')
+# # ph.recall_plot('age', 'hist')
+# # ph.recall_plot('race', 'hist')
+# ph.compare_plots('age')
+# # ph.compare_plots('race')
+
+# ph.plot(df_raw, 'age', 'box')
+# ph.plot(df_raw, 'age', 'box')
+# ph.recall_plot('age', 'hist')
+# ph.recall_plot('age', 'box')
+# ph.compare_plots('age')
+
+## Testing build_interactions method
+
+## "Exploratory" paradigm
+# df_interact = _build_interactions_core(df_raw, features_list=['age','salary'], interact_types=['+', '-', '*', '/'])
+# df_interact = _build_interactions_core(df_raw, features_list=['age', 'salary'], interact_types=['^2', '^3', '^1/2', '^1/3', 'e^x'])
+# df_interact = _build_interactions_core(df_raw, features_list=['age', 'salary'], interact_types=['magnitude', 'magdiff'])
+# df_interact = _build_interactions_core(df_raw, features_list=['age', 'salary'], interact_types=['poly', 'prod^1/2', 'prod^1/3'])
+# df_interact = _build_interactions_core(df_raw, features_list=['age', 'salary'], interact_types=['log_inter', 'exp_inter'])
+# df_interact = _build_interactions_core(df_raw, features_list=['age', 'salary'], interact_types=['mean_diff', 'mean_ratio'])
+# "Exploratory" Error-seeking
+# df_interact = _build_interactions_core(df_raw, features_list=['age'], interact_types=['+', '-', '*', '/'])
+# df_interact = _build_interactions_core(df_raw, features_list=['age'], interact_types=['^2', '^3', '^1/2', '^1/3', 'e^x'])
+# df_interact = _build_interactions_core(df_raw, features_list=['age'], interact_types=['magnitude', 'magdiff'])
+# df_interact = _build_interactions_core(df_raw, features_list=['age', 'salary'], interact_types=[])
+# df_interact = _build_interactions_core(df_raw, features_list=['age', 'salary'])
+# df_interact = _build_interactions_core(df_raw, features_list=['age'])
+## "Focused" paradigm
+# df_interact = _build_interactions_core(df_raw, f1='age', f2='salary', interact_types=['+', '-', '*', '/'])
+# df_interact = _build_interactions_core(df_raw, f1='age', f2='salary', interact_types=['^2', '^3', '^1/2', '^1/3', 'e^x'])
+# df_interact = _build_interactions_core(df_raw, f1='age', f2='salary', interact_types=['magnitude', 'magdiff'])
+# df_interact = _build_interactions_core(df_raw, f1='age', f2='salary', interact_types=['poly', 'prod^1/2', 'prod^1/3'])
+# df_interact = _build_interactions_core(df_raw, f1='age', f2='salary', interact_types=['log_inter', 'exp_inter'])
+# df_interact = _build_interactions_core(df_raw, f1='age', f2='salary', interact_types=['mean_diff', 'mean_ratio'])
+## "Focused" Error-seeking
+# df_interact = _build_interactions_core(df_raw, f2='salary', interact_types=['+', '-', '*', '/'])
+# df_interact = _build_interactions_core(df_raw, f1='age', interact_types=['+', '-', '*', '/'])
+## Final output
+# print(df_interact)
+##Seems all ok!
+
 
 
 # Testing rename_and_tag method

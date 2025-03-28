@@ -156,20 +156,134 @@ considered highly correlated.
 
 ## Method: `reshape`
 ### Core Purpose:
+Perform row- or column-dependent instance (row) removals, as well as feature (column) removals.
 
 ### Parameters:
+- `df` Input Pandas dataframe.
+- `features_to_reshape` (list[str]) 
+- `verbose` (Boolean, default = True) Controls level of detail in output.
 
 ### Returns:
+- Modified dataframe containing only the subset of instances not removed by user.
 
 ### Current State:
+- Docstrings updated for all but drop_columns child func.
+
+- ***UX-focused elements factored out of current build
+  - A bit hardline on this for now, avoiding additional user input beyond confirmation of operations.
+- Core Functionality:
+  - Provides user 3 options for reshaping by removal:
+    - 1. Row-dependent row removal
+      - Provides user with a default missingness threshold
+      - Sums, by row, total missing features
+      - Encodes, by row, whether those rows' missingness is at/above threshold
+    - 2. Column-dependent row removal
+      - Displays row missingness by features provided
+      - Removes rows with missingness in 'features_to_reshape'
+    - 3. Column removal
+      - This might not need to exist outside of UX
+      - Would likely just be a pandas wrapper
+
+- "Verbosity" differentiation not fully implemented
+  - I'm leaning toward this as a UX-side feature of the package
+  - Full method functionality is a bit dense with all of the "possible" info the user is getting or not.
 
 ### Observed Bugs/Problems:
+- testing of current iteration incomplete
+  - bugs not detected so far
 
 ### Ideas for Development:
+- Data types considered "missing" could be subject to user interpretation
+  - Consider implementing options for these
+- "Architecture" of package as related to this method needs clarifying w/ Don
+  - What functionality should go in `transforms.py` vs `tadprep_interactive.py`
 
 ### Method History:
-- Alpha build by Don Smith (Current State)
+- Alpha build by Don Smith
+- Beta build by Gabor Horvath (Current State)
 
+
+## Class: `PlotHandler`
+### Core Purpose:
+Produce, store, and compare relevant, straightforward visualizations on a per-feature basis as guided by user.
+
+### Methods:
+- `.plot(self, df, col_name, plot_type):`
+  -  Generates and stores a Seaborn plot for a specified pandas DataFrame column with plot type determined by user input.
+- `.det_plot_type(self, df, col_name):`
+  - Determines an appropriate plot type for a set of data (pd.Series) based on the pandas dtype of the user's DataFrame column.
+- `.recall_plot(self, col_name, plot_type):`
+  - Fetches data for most recently-created plot of provided type and redraws plot with it.
+- `compare_plots(self, col_name):`
+  - Creates a plt.subplots() figure of appropriate dimension to display all plots of all types for a specified DataFrame column
+
+### Returns:
+- None - is Class
+
+### Current State:
+- Alpha build
+- Colorblind color palette active
+- Data "snapshot" storage system implemented
+  - Relies on storing a pd.Series of the data used for a given viz when that viz is created
+  - Plot "recall/redraw" and basic comparative viz functionality implemented for histplots
+    - plt.subplots() implementation with control-flow for proper axes object positioning and labeling
+
+### Observed Bugs/Problems:
+- `__init__.py` and `tadprep` import functionality has issues recognizing the `PlotHandler` class
+  - Have to specify the following to enable instantiation of PlotHandler() class objects for testing:
+    - 'from tadprep.core.tansforms import PlotHandler'
+    - Unsure if this is expected behavior or if is issue with file structure
+
+- `compare_plots` method failing to populate first column (histograms) in 2D case
+
+
+### Ideas for Development:
+- Testing will help indicate whether we should refactor `.det_plot_type()` and `_rename_and_tag_core` for more effective plot type determination.
+
+- As color-blind friendly as we are capable of!
+- Static viz only, stores and recalls "snapshots" of data for plotting
+
+### Method History:
+- Alpha build by Gabor Horvath
+
+## Method: `build_interactions`
+### Core Purpose:
+Creates new features by combining existing ones through mathematical operations, enabling linear models to capture non-linear relationships between variables.
+
+### Parameters:
+- `df` Input Pandas dataframe.
+- `features_to_combine` (list[str] | None, default=None) Optional list of features to consider for interactions.
+- `interaction_types` (list[str] | None, default=None) Optional list of interaction types to create 
+(e.g., 'multiply', 'divide', 'add', 'subtract', 'polynomial').
+- `verbose` (Boolean, default=True) Controls level of detail/guidance in output.
+- `preserve_features` (Boolean, default=True) Controls whether original features are preserved alongside interactions.
+- `max_features` (int | None, default=None) Optional maximum number of interaction features to create.
+
+### Returns:
+- Modified dataframe containing newly-created interaction features and (possibly not) original features-to-interact.
+
+### Current State:
+- Basic mathematical operations implemented
+- "Complex" mathematical operations implemented
+- Data validation not implemented
+- User-directed division order not implemented
+- In-method feature selection functionality not implemented
+- Verbosity not implemented
+- Warnings for feature explosion and cancellation not implemented
+
+### Observed Bugs/Problems:
+- To-be-tested
+
+### Ideas for development:
+- Determine possibilities for additional interaction types beyond "polynomial"
+- Possible "two paradigms" for how this method could be applied
+  1. Broad-stroke "exploratory" interaction creation
+    - Meant to create larger number of interactions for attempting novel data analysis
+  2. Low-count "targeted" interaction creation
+    - Meant for creation of specific interaction terms based on domain foreknowledge
+
+### Method History:
+- Pre-alpha build by Gabor Horvath
 
 ## Method: `subset`
 ### Core Purpose:

@@ -2,6 +2,9 @@ import re
 import numpy as np
 import pandas as pd
 import matplotlib
+from collections import defaultdict
+from itertools import combinations
+
 matplotlib.use('TkAgg')  # Set the backend before importing pyplot
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -83,589 +86,6 @@ def _df_info_core(df: pd.DataFrame, verbose: bool = True) -> None:
         print('-' * 50)  # Visual separator
         print(df.info(verbose=True, memory_usage=True, show_counts=True))
         print('-' * 50)  # Visual separator
-
-
-def _find_outliers_core(df: pd.DataFrame, method: str = 'iqr', threshold: float = None,
-                        verbose: bool = True) -> dict:
-    """
-    Core function to detect outliers in dataframe features using a specified detection method.
-
-    This function analyzes numerical features in the dataframe and identifies outliers using the specified detection
-    method. It supports three common approaches for outlier detection: IQR-based detection, Z-score method, and
-    Modified Z-score method.
-
-    Args:
-        df (pd.DataFrame): The DataFrame to analyze for outliers
-        method (str, optional): Outlier detection method to use.
-            Options:
-              - 'iqr': Interquartile Range (default)
-              - 'zscore': Standard Z-score
-              - 'modified_zscore': Modified Z-score
-        threshold (float, optional): Threshold value for outlier detection. If None, uses method-specific defaults:
-            - For IQR: 1.5 × IQR
-            - For Z-score: 3.0 standard deviations
-            - For Modified Z-score: 3.5
-        verbose (bool, default=True): Whether to print detailed information about outliers
-    """
-    def numpy_to_python(obj):
-        """This helper function converts Numpy numeric types to Python native types."""
-        if isinstance(obj, np.integer):
-            return int(obj)
-        elif isinstance(obj, np.floating):
-            return float(obj)
-        elif isinstance(obj, dict):
-            return {k: numpy_to_python(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [numpy_to_python(item) for item in obj]
-        return obj
-
-    # Validate selected method
-    valid_methods = ['iqr', 'zscore', 'modified_zscore']
-    if method not in valid_methods:
-        raise ValueError(f'Invalid outlier detection method: "{method}". '
-                         f'Valid options are: {", ".join(valid_methods)}')
-
-    # Set appropriate default thresholds based on method
-    if threshold is None:
-        if method == 'iqr':
-            threshold = 1.5
-        elif method == 'zscore':
-            threshold = 3.0
-        elif method == 'modified_zscore':
-            threshold = 3.5
-
-    # Identify all numerical features
-    num_cols = [column for column in df.columns if pd.api.types.is_numeric_dtype(df[column])]
-
-    # Handle any case where no numerical features are present
-    if not num_cols:
-        if verbose:
-            print('No numerical features found in dataframe. Outlier detection requires numerical data.')
-        return {
-            'summary': {
-                'total_outliers': 0,
-                'affected_rows_count': 0,
-                'affected_rows_percent': 0.0,
-                'features_with_outliers': []
-            },
-            'feature_results': {}
-        }
-
-    if verbose:
-        print('-' * 50)
-        print(f'Analyzing {len(num_cols)} numerical features for outliers...')
-        print(f'Detection method: {method}')
-
-        # Print threshold information based on the selected method
-        if method == 'iqr':
-            print(f'IQR threshold multiplier: {threshold}')
-            print('\nIQR METHOD CONTEXT:')
-            print('- Best for: Data with unknown distribution, resistant to extreme outliers')
-            print('- Limitations: Less effective with small datasets, may miss subtle outliers')
-            print('- Use case: General-purpose outlier detection for most datasets')
-
-        elif method == 'zscore':
-            print(f'Z-score threshold: {threshold} standard deviations')
-            print('\nZ-SCORE METHOD CONTEXT:')
-            print('- Best for: Normally distributed data, larger datasets')
-            print('- Limitations: Sensitive to extreme outliers, skewed distributions')
-            print('- Use case: When data approximates normal distribution and outliers are moderate')
-
-        elif method == 'modified_zscore':
-            print(f'Modified Z-score threshold: {threshold}')
-            print('\nMODIFIED Z-SCORE METHOD CONTEXT:')
-            print('- Best for: Datasets with extreme outliers, skewed distributions')
-            print('- Limitations: More complex to interpret than standard Z-score')
-            print('- Use case: Small datasets or when extreme outliers are present')
-        print('-' * 50)
-
-    # Initialize results dictionary
-    results = {
-        'summary': {
-            'total_outliers': 0,
-            'affected_rows_count': 0,
-            'affected_rows_percent': 0.0,
-            'features_with_outliers': []
-        },
-        'feature_results': {}
-    }
-
-    # Initialize array to track all instances with outliers
-    outlier_rows = np.zeros(len(df), dtype=bool)
-
-    # Process each numerical feature
-    for column in num_cols:
-        # Skip columns with all NaN values
-        if df[column].isna().all():
-            if verbose:
-                print(f'Skipping "{column}": All values are NaN/Missing.')
-            continue
-
-        # Skip columns with only one unique value
-        if df[column].nunique() <= 1:
-            if verbose:
-                print(f'Skipping "{column}": No variance present in feature.')
-            continue
-
-        if verbose:
-            print(f'\nAnalyzing feature: "{column}"')
-
-        # Get data without NaN values
-        data = df[column].dropna()
-
-        if method == 'iqr':
-            # IQR-based outlier detection
-            q1 = data.quantile(0.25)
-            q3 = data.quantile(0.75)
-            iqr = q3 - q1
-
-            # Define bounds using threshold (default 1.5)
-            lower_bound = q1 - threshold * iqr
-            upper_bound = q3 + threshold * iqr
-
-            method_desc = 'IQR-based detection'
-
-        elif method == 'zscore':
-            # Z-score based outlier detection
-            mean = data.mean()
-            std = data.std()
-
-            # Skip if standard deviation is zero
-            if std == 0:
-                if verbose:
-                    print(f'Skipping "{column}": Standard deviation is zero.')
-                continue
-
-            # Define bounds using Z-score threshold
-            lower_bound = mean - threshold * std
-            upper_bound = mean + threshold * std
-
-            method_desc = 'Z-score based detection'
-
-        elif method == 'modified_zscore':
-            # Modified Z-score based outlier detection
-            median = data.median()
-            # Median Absolute Deviation
-            mad = np.median(np.abs(data - median))
-
-            # Skip if MAD is zero
-            if mad == 0:
-                if verbose:
-                    print(f'Skipping "{column}": Median Absolute Deviation is zero.')
-                continue
-
-            # Constant 0.6745 is used to make MAD comparable to standard deviation for normal distributions
-            lower_bound = median - threshold * (mad / 0.6745)
-            upper_bound = median + threshold * (mad / 0.6745)
-
-            method_desc = 'Modified Z-score based detection'
-
-        # Identify outliers
-        outliers = df[
-            ((df[column] < lower_bound) | (df[column] > upper_bound)) & ~df[column].isna()]
-
-        # Store results
-        if not outliers.empty:
-            outlier_count = len(outliers)
-            outlier_percent = (outlier_count / len(data)) * 100
-
-            # Update global summary counts
-            results['summary']['total_outliers'] += outlier_count
-
-            # Update outlier rows tracking
-            outlier_rows = outlier_rows | (
-                    ((df[column] < lower_bound) | (df[column] > upper_bound)) & ~df[column].isna()).values
-
-            # Add feature to list of features with outliers
-            results['summary']['features_with_outliers'].append(column)
-
-            # Store feature-specific results
-            results['feature_results'][column] = {
-                'method': method,
-                'method_description': method_desc,
-                'outlier_count': outlier_count,
-                'outlier_percent': outlier_percent,
-                'outlier_indices': outliers.index.tolist(),
-                'thresholds': {
-                    'lower': lower_bound,
-                    'upper': upper_bound
-                }
-            }
-
-            if verbose:
-                print(f'Method: {method_desc}')
-                print(f'Found {outlier_count} outliers ({outlier_percent:.2f}% of non-null values)')
-                print(f'Thresholds: Lower = {lower_bound:.4f}, Upper = {upper_bound:.4f}')
-
-                # Show extreme outliers (up to 3 min and max)
-                if outlier_count > 0:
-                    print('Sample of outlier values:')
-                    extreme_low = outliers[outliers[column] < lower_bound][column].nsmallest(3)
-                    extreme_high = outliers[outliers[column] > upper_bound][column].nlargest(3)
-
-                    if not extreme_low.empty:
-                        print('Low outliers:', extreme_low.tolist())
-                    if not extreme_high.empty:
-                        print('High outliers:', extreme_high.tolist())
-
-        elif verbose:
-            print(f'No outliers detected using {method_desc}')
-
-    # Update summary with affected rows information
-    affected_rows_count = np.sum(outlier_rows)
-    affected_rows_percent = (affected_rows_count / len(df)) * 100
-    results['summary']['affected_rows_count'] = int(affected_rows_count)
-    results['summary']['affected_rows_percent'] = affected_rows_percent
-
-    # Print summary if in verbose mode
-    if verbose:
-        print('-' * 50)
-        print('OUTLIER DETECTION SUMMARY:')
-        print('-' * 50)
-        print(f'Total outliers detected: {results["summary"]["total_outliers"]}')
-        print(f'Rows containing outliers: {affected_rows_count} ({affected_rows_percent:.2f}% of all rows)')
-
-        if results['summary']['features_with_outliers']:
-            print(f'Features containing outliers: {len(results["summary"]["features_with_outliers"])}')
-            for feature in results['summary']['features_with_outliers']:
-                result = results['feature_results'][feature]
-                print(f'- {feature}: {result["outlier_count"]} outliers ({result["outlier_percent"]:.2f}%)')
-
-        else:
-            print('No outliers detected in any features.')
-
-    # Apply Numpy-to-Python conversion to the results dictionary
-    results = numpy_to_python(results)
-
-    # Return dictionary summarizing results of outlier analysis
-    return results
-
-
-def _find_corrs_core(df: pd.DataFrame, method: str = 'pearson', threshold: float = 0.8, verbose: bool = True) -> dict:
-    """
-    Core function to detect highly-correlated features in a dataframe.
-
-    This function analyzes numerical features in the dataframe and identifies pairs with
-    correlation coefficients exceeding the specified threshold. High correlations may indicate
-    redundant features that could be simplified or removed to improve model performance.
-
-    Args:
-        df (pd.DataFrame): The DataFrame to analyze for correlated features
-        method (str, optional): Correlation method to use. Options:
-            - 'pearson': Standard correlation coefficient (default)
-            - 'spearman': Rank correlation, robust to outliers and non-linear relationships
-            - 'kendall': Another rank correlation, more robust for small samples
-        threshold (float, optional): Correlation coefficient threshold (absolute value).
-            Defaults to 0.8. Values should be between 0 and 1.
-        verbose (bool, optional): Whether to print detailed information about correlations.
-            Defaults to True.
-
-    Returns:
-        dict: A dictionary containing correlation information with the following structure:
-            {
-                'summary': {
-                    'method': str,                # Correlation method used
-                    'num_correlated_pairs': int,  # Total number of highly correlated pairs
-                    'max_correlation': float,     # Maximum correlation found
-                    'avg_correlation': float,     # Average correlation among high pairs
-                    'features_involved': list,    # List of features involved in high correlations
-                },
-                'correlation_pairs': [
-                    {
-                        'feature1': str,          # Name of first feature
-                        'feature2': str,          # Name of second feature
-                        'correlation': float,     # Correlation coefficient
-                        'abs_correlation': float  # Absolute correlation value
-                    },
-                    ...
-                ]
-            }
-    """
-    def numpy_to_python(obj):
-        """This helper function converts Numpy numeric types to Python native types."""
-        if isinstance(obj, np.integer):
-            return int(obj)
-        elif isinstance(obj, np.floating):
-            return float(obj)
-        elif isinstance(obj, dict):
-            return {k: numpy_to_python(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [numpy_to_python(item) for item in obj]
-        return obj
-
-    # Validate correlation method
-    valid_methods = ['pearson', 'spearman', 'kendall']
-    if method not in valid_methods:
-        raise ValueError(f'Invalid correlation method: "{method}". '
-                         f'Valid options are: {", ".join(valid_methods)}')
-
-    # Set appropriate default thresholds based on method if None is passed as value for threshold parameter
-    if threshold is None:
-        if method == 'pearson':
-            threshold = 0.8
-        elif method == 'spearman':
-            threshold = 0.6
-        elif method == 'kendall':
-            threshold = 0.5
-
-    # Validate threshold
-    if not 0 <= threshold <= 1:
-        raise ValueError(f'Threshold must be between 0 and 1, got {threshold}')
-
-    # Identify numerical features
-    num_cols = [column for column in df.columns if pd.api.types.is_numeric_dtype(df[column])]
-
-    # Handle any case where not enough numerical features are present
-    if len(num_cols) <= 1:
-        if verbose:
-            print(
-                'Insufficient numerical features found. Correlation analysis requires at least two numerical features.')
-
-        return {
-            'summary': {
-                'method': method,
-                'num_correlated_pairs': 0,
-                'max_correlation': None,
-                'avg_correlation': None,
-                'features_involved': []
-            },
-            'correlation_pairs': []
-        }
-
-    # Process/procedural information for verbose mode
-    if verbose:
-        print('-' * 50)
-        print(f'Analyzing correlations among {len(num_cols)} numerical features...')
-        print(f'Using {method} correlation with threshold: ± {threshold}')
-
-        # Add method descriptions here
-        if method == 'pearson':
-            print('\nMethod description: Pearson correlation measures linear relationships between features.')
-            print('Best for: Normally distributed data with linear relationships and no significant outliers.')
-            print('Limitations: Sensitive to outliers and only detects linear relationships.')
-
-        elif method == 'spearman':
-            print('\nMethod description: Spearman correlation measures monotonic (consistently increasing or '
-                  'decreasing) relationships using ranks.')
-            print('Best for: Data with non-linear but monotonic relationships or when outliers are present.')
-            print('Limitations: Less powerful than Pearson for detecting truly linear relationships.')
-
-        elif method == 'kendall':
-            print('\nMethod description: Kendall\'s Tau measures concordance (agreement in ranking direction) between '
-                  'feature pairs.')
-            print('Best for: Small samples, ordinal data, or when robustness to outliers is essential.')
-            print('Limitations: More computationally intensive and typically has lower values than other methods.')
-        print('-' * 50)
-
-    # Build correlation matrix
-    corr_matrix = df[num_cols].corr(method=method)
-
-    # Initialize results dictionary and tracking lists
-    results = {
-        'summary': {
-            'method': method,
-            'num_correlated_pairs': 0,
-            'max_correlation': 0.0,
-            'avg_correlation': 0.0,
-            'features_involved': []
-        },
-        'correlation_pairs': []
-    }
-
-    # Instantiate empty data structures for tracking correlated features
-    corr_features = set()
-    corr_values = []
-
-    # Find highly correlated pairs
-    # I'll iterate only through the 'upper triangle' of the correlation matrix
-    # The idea is to avoid duplicating pairs (e.g. corr of A,B is same as corr of B,A)
-    for i in range(len(num_cols)):
-        for j in range(i + 1, len(num_cols)):
-            corr_value = corr_matrix.iloc[i, j]
-            abs_corr = abs(corr_value)
-
-            # Check if correlation exceeds threshold
-            if abs_corr >= threshold:
-                feature1 = num_cols[i]
-                feature2 = num_cols[j]
-
-                # Add features to tracking set
-                corr_features.add(feature1)
-                corr_features.add(feature2)
-
-                # Add correlation value to tracking list
-                corr_values.append(abs_corr)
-
-                # Add pair details to results
-                results['correlation_pairs'].append({
-                    'feature_1': feature1,
-                    'feature_2': feature2,
-                    'correlation': corr_value,
-                    'absolute_correlation': abs_corr
-                })
-
-    # Update summary information
-    num_pairs = len(results['correlation_pairs'])
-    results['summary']['num_correlated_pairs'] = num_pairs
-    results['summary']['features_involved'] = sorted(list(corr_features))
-
-    if num_pairs > 0:
-        results['summary']['max_correlation'] = max(corr_values)
-        results['summary']['avg_correlation'] = sum(corr_values) / num_pairs
-
-    # Sort correlation pairs by absolute correlation value (descending)
-    results['correlation_pairs'] = sorted(
-        results['correlation_pairs'],
-        key=lambda x: x['absolute_correlation'],
-        reverse=True
-    )
-
-    # Print results if verbose is True
-    if verbose:
-        if num_pairs > 0:
-            print(f'Found {num_pairs} feature pairs with {method} correlations of {threshold} or higher:')
-            print('-' * 50)
-
-            # Print each highly correlated pair
-            for pair in results['correlation_pairs']:
-                corr_sign = '+' if pair['correlation'] >= 0 else '-'
-                print(f"{pair['feature_1']} and {pair['feature_2']}: {corr_sign}{pair['absolute_correlation']:.4f}")
-
-            print('-' * 50)
-            print(f'Maximum correlation found: {results["summary"]["max_correlation"]:.4f}')
-            print(f'Average absolute correlation among highly-correlated pairs: '
-                  f'{results["summary"]["avg_correlation"]:.4f}')
-            print(f'Total count of unique features involved in high correlations: {len(corr_features)}')
-
-            if len(corr_features) > 0:
-                print('\nIndividual features participating in high correlations:')
-                for feature in sorted(corr_features):
-                    # Count how many correlations involve this feature
-                    count = sum(1 for pair in results['correlation_pairs']
-                                if pair['feature_1'] == feature or pair['feature_2'] == feature)
-                    print(f'- {feature} (appears in {count} high-correlation pair{"s" if count > 1 else ""})')
-
-        else:
-            print(f'No feature pairs found with {method} correlation of ≥ {threshold}')
-
-        print('-' * 50)
-
-    # Apply Numpy-to-Python conversion to the results dictionary
-    results = numpy_to_python(results)
-
-    # Return results dictionary
-    return results
-
-
-def _reshape_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
-    """
-    Core function for reshaping a DataFrame by handling missing values, dropping features, and subsetting data.
-
-    Args:
-        df (pd.DataFrame): Input DataFrame to reshape
-        verbose (bool): Whether to print detailed information about operations. Defaults to True.
-
-    Returns:
-        pd.DataFrame: Reshaped DataFrame
-
-    Raises:
-        ValueError: If invalid indices are provided for column dropping
-        ValueError: If an invalid subsetting proportion is provided
-    """
-    if verbose:
-        print('-' * 50)  # Visual separator
-        print('Beginning data reshape process.')
-        print('-' * 50)  # Visual separator
-
-    row_missing_cnt = df.isnull().any(axis=1).sum()  # Compute count
-    # Ask if the user wants to delete *all* instances with any missing values, if any exist
-    if row_missing_cnt > 0:
-        user_drop_na = input('Do you want to drop all instances with *any* missing values? (Y/N): ')
-        if user_drop_na.lower() == 'y':
-            df = df.dropna()
-            if verbose:
-                print(f'After deletion of {row_missing_cnt} instances with missing values, {len(df)} instances remain.')
-
-    # Ask if the user wants to drop any of the columns/features in the dataset
-    user_drop_cols = input('\nDo you want to drop any of the features in the dataset? (Y/N): ')
-    if user_drop_cols.lower() == 'y':
-        print('The full set of features in the dataset is:')
-        for col_idx, column in enumerate(df.columns, 1):  # Create enumerated list of features starting at 1
-            print(f'{col_idx}. {column}')
-
-        while True:  # We can justify 'while True' because we have a cancel-out input option
-            try:
-                drop_cols_input = input('\nEnter the index integers of the features you wish to drop '
-                                        '(comma-separated) or enter "C" to cancel: ')
-
-                # Check for user cancellation
-                if drop_cols_input.lower() == 'c':
-                    if verbose:
-                        print('Feature deletion cancelled.')
-                    break
-
-                # Create list of column indices to drop
-                drop_cols_idx = [int(idx.strip()) for idx in drop_cols_input.split(',')]  # Splitting on comma
-
-                # Verify that all index numbers of columns to be dropped are valid/in range
-                if not all(1 <= idx <= len(df.columns) for idx in drop_cols_idx):  # Using a generator
-                    raise ValueError('Some feature index integers entered are out of range/invalid.')
-
-                # Convert specified column numbers to actual column names
-                drop_cols_names = [df.columns[idx - 1] for idx in drop_cols_idx]  # Subtracting 1 from indices
-
-                # Drop the columns
-                df = df.drop(columns=drop_cols_names)
-                if verbose:
-                    print('-' * 50)  # Visual separator
-                    print(f'Dropped features: {",".join(drop_cols_names)}')  # Note dropped columns
-                    print('-' * 50)  # Visual separator
-                break
-
-            # Catch invalid user input
-            except ValueError:
-                print('Invalid input. Please enter valid feature index integers separated by commas.')
-                continue  # Restart the loop
-
-    # Ask if the user wants to sub-set the data
-    user_subset = input('Do you want to sub-set the data by randomly deleting a specified proportion of '
-                        'instances? (Y/N): ')
-    if user_subset.lower() == 'y':
-        while True:  # We can justify 'while True' because we have a cancel-out input option
-            try:
-                subset_input = input('Enter the proportion of instances to DROP (0.0-1.0) or '
-                                     'enter "C" to cancel: ')
-
-                # Check for user cancellation
-                if subset_input.lower() == 'c':
-                    if verbose:
-                        print('Random sub-setting cancelled.')
-                    break
-
-                subset_rate = float(subset_input)  # Convert string input to float
-                if 0 < subset_rate < 1:  # If the float is valid (i.e. between 0 and 1)
-                    retain_rate = 1 - subset_rate  # Compute retention rate
-                    retain_row_cnt = int(len(df) * retain_rate)  # Select count of rows to keep in subset
-
-                    df = df.sample(n=retain_row_cnt)  # No random state set b/c we want true randomness
-                    if verbose:
-                        print(f'Randomly dropped {subset_rate}% of instances. {retain_row_cnt} instances remain.')
-                    break
-
-                # Catch user input error for invalid/out-of-range float
-                else:
-                    print('Enter a value between 0.0 and 1.0.')
-
-            # Catch outer-level user input errors
-            except ValueError:
-                print('Invalid input. Enter a float value between 0.0 and 1.0 or enter "C" to cancel.')
-                continue  # Restart the loop
-    if verbose:
-        print('-' * 50)  # Visual separator
-        print('Data reshape complete. Returning modified dataframe.')
-        print('-' * 50)  # Visual separator
-
-    return df  # Return the trimmed dataframe
 
 
 def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
@@ -3315,6 +2735,886 @@ def _scale_core(
 
     # Return the modified dataframe with scaled values
     return df
+
+
+def _reshape_core(
+        df: pd.DataFrame,
+        features_to_reshape: list[str] | None = None,
+        verbose: bool = True
+) -> pd.DataFrame:
+    """
+    Core function for reshaping a DataFrame by identifying missing values and dropping rows and columns.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame to reshape.
+        features_to_reshape (list[str]): User-provided list of features to constrain TADPREP behavior.
+        verbose (bool): Whether to print detailed information about operations. Defaults to True.
+
+    Returns:
+        pd.DataFrame: Reshaped DataFrame
+
+    Raises:
+        ValueError: If invalid indices are provided for column dropping
+        ValueError: If an invalid subsetting proportion is provided
+    """
+    if verbose:
+        print('-' * 50)  # Visual separator
+        print(f'Beginning data reshape process. \nInput data of {df.shape[0]} instances x {df.shape[1]} features.')
+        print('-' * 50)  # Visual separator
+
+    ## Helper func to identify current level of row-based missingness by threshold
+    # Default threshold is 25% "real" values
+    def rows_missing_by_thresh(df: pd.Dataframe, threshold: float = 0.25) -> int:
+        """
+        Helper function to determine missingness of data by row for a given percentage threshold.
+
+        Args:
+            df (pd.Dataframe): Input DataFrame in process of 'reshape'.
+            threshold (float): Populated data threshold. Defaults to 0.25.
+
+        Returns:
+            int: Count of instances in 'df' with 'threshold' or less populated data.
+            
+        Raises:
+            ...
+        """
+        # Determine how many NA's at each row and encode by threshold if 
+        sum_by_missing = df.isna().sum(axis=1).tolist()
+        encode_by_thresh = [1 if ((df.shape[1] - row_cnt) / df.shape[1]) <= (threshold)
+                            else 0
+                            for row_cnt in sum_by_missing]
+        # Sum count of rows that meet threshold
+        row_missing_cnt = sum(encode_by_thresh)
+        
+        return row_missing_cnt
+
+    def recommend_thresholds(df: pd.DataFrame) -> list:
+        """
+        Helper function generates recommended degree-of-population thresholds based on size of user data.
+
+        Args:
+            df (pd.DataFrame): Input DataFrame in process of 'reshape'.
+
+        Returns:
+            list: Array of recommended degree-of-population thresholds.
+        """
+        print('Degree-of-population thresholds adjust based on # of Features in DataFrame.')
+        print('Consider custom thresholds based on your understanding of data requirements.')
+        
+        feature_cnt = df.shape[1]
+        
+        if feature_cnt <= 5:
+            print(f'\nFeature space is {feature_cnt}: Evaluated as "very small".')
+            
+            print(f'Recommend very high thresholds\n{[]}')
+            
+        ##  if feature_cnt  
+
+
+    ## Helper func to identify rows with pre-defined column values missing
+    def rows_missing_by_feature(df: pd.DataFrame, features_to_reshape: list[str]) -> dict:
+        """
+        Helper function generates counts of missingness by features in 'features_to_reshape'
+
+        Args:
+            df (pd.DataFrame): Input DataFrame in process of 'reshape'.
+            features_to_reshape (list[str]): User-provided list of features to constrain TADPREP behavior.
+
+        Returns:
+            missing_cnt_by_feature (dict): Keyed by feature, Val count of missing per-key
+        """
+        # Straighforward dict comprehension to store 'features_to_reshape' and corresponding
+        # missingness counts as key:val pairs
+        missing_cnt_by_feature = {feature: df[feature].isna().sum() for feature in features_to_reshape}
+        
+        # Pandas-native approach to counting rows missing ALL 'features_to_reshape'
+        missing_all_feature_cnt = df[features_to_reshape].isna().all().sum()
+        
+        # Add count of rows missing ALL 'features_to_reshape'
+        missing_cnt_by_feature['ALL'] = missing_all_feature_cnt
+        
+        return missing_cnt_by_feature
+        
+    ## Core Operation 1
+    def row_based_row_remove(df: pd.DataFrame, threshold: float | None) -> pd.DataFrame:
+        """
+        Function to perform row-based row removal from input DataFrame.
+
+        Args:
+            df (pd.DataFrame): Input DataFrame in process of 'reshape'.
+            threshold (float | None): Decimal percent degree-of-population threshold to apply to row removal process.
+
+        Returns:
+            df (pd.DataFrame): DataFrame in process of 'reshape' with rows removed by degree-of-population threshold.
+        """
+        
+        # Here we rework the threshold by rounding for communication and df.dropna(thresh=)
+        final_thresh = int(round(df.shape[1] * threshold))
+        
+        # rows_missing_by_thresh defaults to 25%
+        print(f'Identified {rows_missing_by_thresh(df, threshold)} instances with {(threshold * 100):.2f}% or less populated data.')
+        print(f'Rounding {(threshold * 100):.2f}% threshold to {final_thresh} features out of {df.shape[1]}.')
+        
+        # User confirmation to drop instances with fewer than 'final_tresh' populated features
+        while True:
+            proceed = input(f'Drop all instances with {final_thresh} or fewer populated features? (Y/N): ')
+        
+            if proceed.lower() == 'y':
+                print('Dropping\n')
+                df.dropna(thresh=final_thresh, inplace=True)
+                
+            elif proceed.lower() == 'n':
+                print('Aborting drop operation. Input DataFrame not modified.\n')
+                break
+                
+            else:
+                print('Invalid input, please enter "Y" or "N.\n')
+                continue
+        
+        return df
+    
+    ## Core Operation 2
+    def column_based_row_remove(df: pd.DataFrame, features_to_reshape: list[str]) -> pd.DataFrame:
+        """
+        Function to perform column-based row removal from input DataFrame.
+
+        Args:
+            df (pd.DataFrame): Input DataFrame in process of 'reshape'.
+            features_to_reshape (list[str]): DataFrame columns by which to apply row removal process.
+
+        Returns:
+            df (pd.DataFrame): DataFrame in process of 'reshape' with rows removed by column-missingness.
+        """
+        
+        ## This build assumes that input arg 'features_to_reshape' will be the way user provides
+        ## what features they wish to analyze and drop by.
+        ## It is also the way this func determines relevant missingness
+        
+        # Create dict of missings-by-feature
+        missing_cnt_by_feature = rows_missing_by_feature(df, features_to_reshape)
+        
+        print('Counts of instances missing by feature:')
+        for pair in sorted(missing_cnt_by_feature.items()):
+            print(pair)
+
+        # User confirmation to drop instances missingness in 'features_to_reshape'
+        while True:
+            proceed = input(f'Drop all instances with missing values in {features_to_reshape} ? (Y/N): ')
+        
+            if proceed.lower() == 'y':
+                print('Dropping\n')
+                df.dropna(subset=features_to_reshape, inplace=True)
+                
+            elif proceed.lower() == 'n':
+                print('Aborting drop operation. Input DataFrame not modified.\n')
+                break
+                
+            else:
+                print('Invalid input, please enter "Y" or "N.\n')
+                continue
+        
+        return df
+    
+    ## Core Operation 3
+    def drop_columns(df: pd.DataFrame, features_to_reshape: list[str]) -> pd.DataFrame:
+        
+        ## This theoretically could be just a pandas wrapper.
+        ## Check with Don about how it might integrate with UX ideas.
+
+        # Drop columns in 'features_to_reshape'
+        input = input(f'Drop columns {features_to_reshape}? (Y/N): ')
+        if input.lower() == 'y':
+            print('Dropping columns\n')
+            df.drop(columns=features_to_reshape, inplace=True)
+        elif input.lower() == 'n':
+            print('Aborting column drop operation. Input DataFrame not modified.\n')
+        else:
+            print('Invalid input, please enter "Y" or "N.\n')
+        
+        return df
+    
+    return df
+
+# #-------New OOP-----------------------------------
+
+### Working through this has me thinking that there may be benefits to
+### handling the entire process of TADPREP through OOP, considering the
+### user's DataFrame will exist in a variety of states throughout.
+
+class PlotHandler:
+    def __init__(self, palette: str = 'colorblind'):
+        
+        self.palette = palette
+        sns.set_palette(self.palette)
+
+        # Triple-layer defaultdict() allows for automatic data structuring
+        # when we expect all plots to be stored in the same way
+        self.plot_storage = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+
+        # Basic structure for data snapshot storage
+        # {
+        #     'col_name': {
+        #         'plot_type': {
+        #             'plot_num': [int],
+        #             'data': [pd.Series] (pd.Series will contain indexing info)
+        #         }
+        #     }
+        # } 
+        
+    def det_plot_type(self, data: pd.DataFrame | pd.Series, col_name: str) -> tuple:
+        """
+        Determines an "appropriate" plot type for a set of data (pd.Series)
+        based on the pandas dtype of the user's DataFrame column.
+
+        Args:
+            col_name (str): Specified DataFrame column to determine plotting info for.
+        
+        Raises:
+            ValueError: _description_
+
+        Returns:
+            plot_type (tuple (pd.dtype, str)): A tuple containing dtype and its corresponding "plot type" string (hist/line/etc.).
+        """
+
+        #####################################
+        # This method may not be necessary, but is currently a placeholder method in the case
+        # we decide to separate plot-type determination from method-arg-input.
+        #####################################
+        
+        # Determine if input is pd.DataFrame or pd.Series
+        if isinstance(data, pd.DataFrame):
+            dtype = data[col_name].dtype
+        elif isinstance(data, pd.Series):
+            dtype = data.dtype
+        # Empty str variable, will be re-valued by this method
+        plot_type = ""
+        
+        if pd.api.types.is_numeric_dtype(dtype):
+            plot_type = 'hist'  # Define 'hist' as plot type for numeric data
+            
+        elif pd.api.types.is_categorical_dtype(dtype) or pd.api.types.is_object_dtype(dtype):
+            plot_type = 'box'   # Define 'box' as plot type for numeric data
+            
+        elif pd.api.types.is_datetime64_any_dtype(dtype):
+            # '.is_datetime64_any_dtype' allows for TZ-aware DataFrames
+            plot_type = 'line'  # Define 'line' for time-series data
+            
+        else:
+            plot_type = 'scatter'   # For all other types, assume mixed data and assign 'scatter'
+        
+        return (dtype, plot_type)
+    
+    def plot(self, df: pd.DataFrame, col_name: str, plot_type: str):
+        """
+        Create a specified Seaborn plot for a specified pandas DataFrame column.
+        Copies current data state to PlotHandler class instance self.plot_storage.
+
+        Args:
+            data (pd.DataFrame): DataFrame to reference.
+            col_name (str): Name of DataFrame column for plotting and archiving.
+            plot_type (str): Type of plot to create (hist, box, line, scatter).
+
+        Raises:
+            ValueError: _description_
+        """
+
+        data = df[col_name]
+
+        ### LIKELY UNNECESSARY if giving user control over method arg
+        # # Check dtype of pd.Series for indexing in self.plot_storage
+        # plot_type = self.det_plot_type(data, col_name)[1]
+        
+        # Create 'plot_num' list with first value 1 if not already present
+        if not self.plot_storage[col_name][plot_type]['plot_num']:
+            self.plot_storage[col_name][plot_type]['plot_num'].append(1)
+        # Otherwise, append the next number in the sequence
+        else:
+            self.plot_storage[col_name][plot_type]['plot_num'].append(
+                self.plot_storage[col_name][plot_type]['plot_num'][-1] + 1
+            )
+
+        self.plot_storage[col_name][plot_type]['data'].append(data)
+
+
+        if plot_type == 'hist':
+            plot = sns.histplot(data=data, kde=True)
+            plot.set_title(f"Histogram for '{col_name}'")
+            plt.show()  # Assume viz is desired on creation for now
+        
+            return
+        
+        elif plot_type == 'box':
+            plot = sns.boxplot(data=data)
+            plot.set_title(f"Box Plot for '{col_name}'")
+            plt.show()  # Assume viz is desired on creation for now
+        
+            return
+        
+        elif plot_type == 'line':
+            plot = sns.lineplot(data=data)
+            plot.set_title(f"Line Plot for '{col_name}'")
+            plt.show()  # Assume viz is desired on creation for now
+        
+            return
+        
+        elif plot_type == 'scatter':
+            plot = sns.scatterplot(data=data)
+            plot.set_title(f"Scatter Plot for '{col_name}'")
+            plt.show()  # Assume viz is desired on creation for now
+            
+            return
+        
+        else:
+            print(f'Unsupported plot type: {plot_type}')
+            return
+    
+    def recall_plot(self, col_name: str, plot_type: str):
+        """
+        Recall a previously-created stored plot for a given dtype and DataFrame column.
+
+        Args:
+            dtype (_type_): dtype to be fetched from defaultdict.
+            col_name (str): Name of DataFrame column for fetching from defaultdict.
+
+        Raises:
+            ValueError: _description_
+        """
+        # Could be implemented to fetch by plot number, but currently fetches most recent plot
+        if not self.plot_storage[col_name][plot_type]:
+            print(f"No plot found for '{col_name}' with dtype '{plot_type}'")
+        else:
+            # Fetch data for single most recent plot of specified dtype and col_name
+            stored_data = self.plot_storage[col_name][plot_type]['data'][-1]
+            stored_order = self.plot_storage[col_name][plot_type]['plot_num'][-1]
+
+            print(f"Redrawing {plot_type} plot #{stored_order} for '{col_name}'")
+
+            if plot_type == 'hist':
+                plot = sns.histplot(data=stored_data, kde=True)
+                plot.set_title(f"Histogram #{stored_order} for '{col_name}'")
+            elif plot_type == 'box':
+                plot = sns.boxplot(data=stored_data)
+                plot.set_title(f"Box Plot #{stored_order} for '{col_name}'")
+            elif plot_type == 'line':
+                plot = sns.lineplot(data=stored_data)
+                plot.set_title(f"Line Plot #{stored_order} for '{col_name}'")
+            elif plot_type == 'scatter':
+                plot = sns.scatterplot(data=stored_data)
+                plot.set_title(f"Scatter Plot #{stored_order} for '{col_name}'")
+            plt.show()
+        
+        return
+
+    def compare_plots(self, col_name: str):
+        """
+        Compare all stored plots for a given column.
+
+        Args:
+            col_name (str): Name of DataFrame column for which plots will be compared.
+
+        Raises:
+            ValueError: _description_
+        """
+
+        types_list = ['hist', 'box', 'line', 'scatter']
+
+        # Determine the number of rows and columns for subplots
+        subplots_nrows = max(len(self.plot_storage[col_name][plot_type]['data']) for plot_type in types_list)
+        
+        subplots_ncols = sum(1 for plot_type in types_list if self.plot_storage[col_name][plot_type]['data'])
+
+        # debug
+        print(f"nrows: {subplots_nrows}, ncols: {subplots_ncols}")
+
+        # Create subplots
+        fig, ax = plt.subplots(nrows=subplots_nrows,
+                               ncols=subplots_ncols,
+                               sharex=True
+                               )
+
+        # Ensure ax is always a 2D array for consistent indexing
+        if subplots_nrows == 1:
+            ax = [ax]  # Convert to a list for 1D case
+        if subplots_ncols == 1:
+            ax = [[a] for a in ax]  # Convert to a nested list for 2D case
+
+        # Iterate over columns (plot types)
+        for col, curr_plot_type in enumerate(types_list):
+            if curr_plot_type in self.plot_storage[col_name]:
+                # Iterate over rows (individual plots)
+                for row, data in enumerate(self.plot_storage[col_name][curr_plot_type]['data']):
+                    # Validate data presence
+                    if data.dropna().empty:
+                        print(f"No valid data available for {curr_plot_type} at position: {row, col}")
+                        continue
+                    
+                    ### BUG HERE: sns.histplot does not populate for 1st column in 2D .subplots() case
+                    print(f"Plotting {curr_plot_type} at position: {row, col}")
+                    if curr_plot_type == 'hist':
+                        sns.histplot(data=data, kde=True, ax=ax[row][col])
+                    elif curr_plot_type == 'box':
+                        sns.boxplot(data=data, ax=ax[row][col])
+                    elif curr_plot_type == 'line':
+                        sns.lineplot(data=data, ax=ax[row][col])
+                    elif curr_plot_type == 'scatter':
+                        sns.scatterplot(data=data, ax=ax[row][col])
+
+                    ax[row][col].set_title(f"{curr_plot_type.capitalize()} Plot {row+1}")
+
+        fig.suptitle(f"Comparison of all plots for '{col_name}'")
+        plt.tight_layout()
+        plt.show()
+
+        return
+    
+def _build_interactions_core(
+        df: pd.DataFrame,
+        f1: str | None = None,
+        f2: str | None = None,
+        features_list: list[str] | None = None,
+        interact_types: list[str] | None = None,
+        verbose: bool = True,
+        preserve_features: bool = True
+        # max_features: int | None = None
+) -> pd.DataFrame:
+    """
+    Core function to build interaction terms between specified features in a DataFrame.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame to build interactions from.
+        f1 (str): Feature 1 to interact in "focused" paradigm.
+        f2 (str): Feature 2 to interact in "focused" paradigm.
+        features_list (list[str]): List of features to interact in "exploratory" paradigm.
+        interact_types (list[str]): List of interaction types to apply.
+        verbose (bool): Whether to print detailed information about operations. Defaults to True.
+        preserve_features (bool): Whether to retain original features in the DataFrame. Defaults to True.
+        max_features (int): Optional maximum number of interaction features to create.
+
+    Returns:
+        pd.DataFrame: DataFrame with interaction terms appended and user-specified columns removed.
+
+    Raises:
+        ValueError: If invalid interaction types are provided.
+    """
+    #TODO: Data Validation steps to be moved to package.py
+    #TODO: Implement feature selection checks, including max_features
+
+    # Check for existence of input DataFrame
+    if df.empty:
+        print('DataFrame is empty. No interactions can be created.')
+        return df
+
+    if verbose:
+        print('-' * 50)  # Visual separator
+        print('Beginning feature interaction process.')
+        print('-' * 50)  # Visual separator
+
+    # Remove dupes from 'interact_types' if they exists
+    # Replace "categorical calls" if included
+    # and preserve order:
+    def clean_interact_types(interact_types: list[str]):
+        # Replace "categorical calls" if included, including dupes
+        if 'arithmetic' in interact_types:
+            interact_types = [x for x in interact_types if x != 'arithmetic']
+            interact_types = ['+', '-', '*', '/'] + interact_types
+        if 'exponential' in interact_types:
+            interact_types = [x for x in interact_types if x != 'exponential']
+            interact_types = ['^2', '^3', '^1/2', '^1/3', 'e^x'] + interact_types
+        if 'distance' in interact_types:
+            interact_types = [x for x in interact_types if x != 'distance']
+            interact_types = ['magnitude','magsum', 'magdiff'] + interact_types
+        if 'polynomial' in interact_types:
+            interact_types = [x for x in interact_types if x != 'polynomial']
+            interact_types = ['poly', 'prod^1/2', 'prod^1/3'] + interact_types
+        if 'logexp' in interact_types:
+            interact_types = [x for x in interact_types if x != 'logexp']
+            interact_types = ['log_inter', 'exp_inter'] + interact_types
+        if 'stat' in interact_types:
+            interact_types = [x for x in interact_types if x != 'stat']
+            interact_types = ['mean_diff', 'mean_ratio'] + interact_types
+
+        # Remove dupes from 'interact_types' if they exists
+        seen = set()
+        result_list = []
+        for type in interact_types:
+            if type in seen:
+                if verbose:
+                    print(f"Duplicate interaction type '{type}' detected. Removing...")
+            if type not in seen:
+                result_list.append(type)
+                seen.add(type)
+        interact_types = result_list
+
+        return interact_types
+
+    if interact_types:
+        interact_types = clean_interact_types(interact_types)
+
+
+    # Check for valid interaction categories or types
+    valid_types = ['arithmetic',                        # Categorical interaction calls
+                   'exponential',                       #
+                   'distance',                          #
+                   'polynomial',                        #
+                   'logexp',                            #
+                   'stat',                              #
+                   '+', '-', '*', '/',                  # Arithmetic
+                   '^2', '^3', '^1/2', '^1/3', 'e^x',   # Exponential
+                   'magnitude','magsum', 'magdiff',     # Distance
+                   'poly', 'prod^1/2', 'prod^1/3',      # Polynomial and other roots
+                   'log_inter', 'exp_inter',            # Logarithmic and exponential interactions
+                   'mean_diff', 'mean_ratio']           # Statistical interactions
+
+    manual_abort = 0
+    if (interact_types is None) or (not interact_types):
+        print(f"""
+                No interaction types specified.
+                Available interaction types are:
+                Arithmetic    ->  '+', '-', '*', '/'
+                Exponential  ->  '^2', '^3', '^1/2', '^1/3', 'e^x'
+                Distance     ->  'magnitude', 'magsum', 'magdiff'
+                Polynomial   ->  'poly', 'prod^1/2', 'prod^1/3'
+                Logarithmic  ->  'log_inter', 'exp_inter'
+                Statistical  ->  'mean_diff', 'mean_ratio'
+                """)
+        input0 = input("Would you like further detail on the available interaction types? (Y/N): ")
+        if input0.lower() == 'y':
+            print(f"""
+                    '+' : Column-wise sum of features            ->  df[f1] + df[f2]
+                    '-' : Column-wise difference of features     ->  df[f1] - df[f2]
+                    '*' : Column-wise product of features        ->  df[f1] * df[f2]
+                    '/' : Column-wise quotient of features       ->  df[f1] / df[f2]
+                    '^2'   : Single-column square of feature     ->  df[f1] ** 2
+                    '^3'   : Single-column cube of feature       ->  df[f1] ** 3
+                    '^1/2' : Single-column sqrt of feature       ->  np.sqrt(df[f1])
+                    '^1/3' : Single-column cbrt of feature       ->  np.cbrt(df[f1])
+                    'e^x'  : Single-column exponent of feature   ->  np.exp(df[f1])
+                    'magnitude' : Column-wise sqrt of squares    ->  np.sqrt(df[f1] ** 2 + df[f2] ** 2)
+                    'magsum'   : Column-wise absolute diff       ->  np.abs(df[f1] + df[f2])
+                    'magdiff'   : Column-wise absolute diff      ->  np.abs(df[f1] - df[f2])
+                    'poly'     : Column-wise binomial square     ->  df[f1] * df[f2] + df[f1] ** 2 + df[f2] ** 2
+                    'prod^1/2' : Column-wise sqrt of product     ->  np.sqrt(np.abs(df[f1] * df[f2]))
+                    'prod^1/3' : Column-wise cbrt of product     ->  np.cbrt(df[f1] * df[f2])
+                    'log_inter' : Product of offset logarithms   ->  np.log(df[f1] + 1) * np.log(df[f2] + 1)
+                    'exp_inter' : Product of feature exponents   ->  np.exp(df[f1]) * np.exp(df[f2])
+                    'mean_diff'  : f1 difference from f1,f2 mean ->  df[f1] - df[[f1, f2]].mean(axis=1)
+                    'mean_ratio' : Ratio of f1 to f1,f2 mean     ->  df[f1] / df[[f1, f2]].mean(axis=1)
+                """)
+        elif input0.lower() == 'n':
+            pass
+        else:
+            print("Invalid input. Select 'Y' or 'N'.")
+
+        iter_input = 0
+        while True:
+            if iter_input == 0:
+                input1 = input(f"""
+                                Interaction types must be specified for .build_interactions() operation.
+                                Please select one of the following:
+                                1. Provide a list of custom interaction types   (comma-separated format. i.e. [+,^2,magnitude,...])
+                                2. Apply some common "default" interactions     (Arithmetic interactions [+,-,*,/])
+                                3. Exit method
+                                -> """)
+            elif iter_input > 0:
+                input1 = input("-> ")
+
+            if input1.lower() == '1':
+                input10 = input("Interaction types: ")
+                interact_types = input10.lower().split(",")
+                print(f"\nContinuing with new interact_types: {interact_types}")
+                break
+            elif input1.lower() == '2':
+                print("Defaulting to ALL Arithmetic interactions (+, -, *, /).")
+                interact_types = ['+', '-', '*', '/']
+                break
+
+            elif input1.lower() == '3':
+                print("Aborting .build_interactions() operation. Input DataFrame not modified")
+                manual_abort = 1
+                break
+            else:
+                print("Invalid input. Select '1', '2', or '3'")
+                iter_input += 1
+                continue
+
+    if manual_abort == 1:
+        return df
+
+    for type in interact_types:
+        if type not in valid_types:
+            raise ValueError(f'Invalid interaction type: {type}')
+        
+    # Clean up runtime user inputs
+    interact_types = clean_interact_types(interact_types)
+
+    if features_list and len(features_list) == 1 and not set(interact_types).issubset(set(['^2', '^3', '^1/2', '^1/3', 'e^x'])):
+        print("Only 1 feature provided and multi-feature interaction types specified. INVALID OPERATION SET. Aborting method. Input DataFrame not modified.")
+        return df
+    
+    # Record of actions for 'verbose' state
+    action_summary = []
+
+    ## Handle error from incorrect 'f1', 'f2' arg input
+    if f2 and not f1:
+        print("Only 'f2' feature provided for TADPREP 'Focused' _build_interactions method. Please provide only 'f1' if single-column interactions desired.")
+        return df
+
+    ### "focused" interaction creation paradigm
+    ### i.e. specific interactions between two specifically-provided features
+    if f1:
+        if not f2:
+            print("'f2' feature not provided for multi-column interaction. Aborting method. Input DataFrame not modified.")
+            return df
+        if set(interact_types).issubset(set(['^2', '^3', '^1/2', '^1/3', 'e^x'])):
+            print("WARNING: All provided interact_types are single-column interactions. Only f1-argument-sourced interactions will be created in 'Focused' paradigm.")
+        # Perform interaction term creation
+        for interact in interact_types:
+            
+            ## Arithmetic interactions
+            if interact == '+':                     # Sum
+                new_feature = f'{f1}_+_{f2}'
+                df[new_feature] = df[f1] + df[f2]
+            elif interact == '-':                   # Difference
+                new_feature = f'{f1}_-_{f2}'
+                df[new_feature] = df[f1] - df[f2]
+            elif interact == '*':                   # Product
+                new_feature = f'{f1}_*_{f2}'
+                df[new_feature] = df[f1] * df[f2]
+            elif interact == '/':                   # Quotient
+                new_feature = f'{f1}_/_{f2}'
+                df[new_feature] = df[f1] / df[f2]
+                # Replace infinite values with NaN
+                df[new_feature] = df[new_feature].replace([np.inf, -np.inf], np.nan)
+
+                if verbose:
+                    print('***Div-by-zero errors are replaced with NaN. Take care to handle these and propagated-NaNs in your analysis.***')
+
+            ## Exponential interactions
+            elif interact == '^2':                  # Square
+                new_feature = f'{f1}^2'
+                df[new_feature] = df[f1] ** 2
+            elif interact == '^3':                  # Cube
+                new_feature = f'{f1}^3'
+                df[new_feature] = df[f1] ** 3
+            elif interact == '^1/2':                # Square root
+                new_feature = f'{f1}^1/2'
+                df[new_feature] = np.sqrt(df[f1])
+            elif interact == '^1/3':                # Cube root
+                new_feature = f'{f1}^1/3'
+                df[new_feature] = np.cbrt(df[f1])
+            elif interact == 'e^x':                 # Exponential
+                new_feature = f'e^{f1}'
+                df[new_feature] = np.exp(df[f1])
+
+            ## Distance interactions
+            elif interact == 'magnitude':           # Magnitude
+                new_feature = f'magnitude_{f1}_{f2}'
+                df[new_feature] = np.sqrt(df[f1] ** 2 + df[f2] ** 2)
+            elif interact == 'magsum':              # Magnitude sum
+                new_feature = f'magsum_{f1}_{f2}'
+                df[new_feature] = np.abs(df[f1] + df[f2])
+            elif interact == 'magdiff':             # Magnitude difference
+                new_feature = f'magdiff_{f1}_{f2}'
+                df[new_feature] = np.abs(df[f1] - df[f2])
+            
+            ## Polynomial and other roots
+            elif interact == 'poly':                # Polynomial
+                new_feature = f'poly_{f1}_{f2}'
+                df[new_feature] = df[f1] * df[f2] + df[f1] ** 2 + df[f2] ** 2
+            elif interact == 'prod^1/2':            # Product square root
+                new_feature = f'prod^1/2_{f1}_{f2}'
+                df[new_feature] = np.sqrt(np.abs(df[f1] * df[f2]))
+            elif interact == 'prod^1/3':            # Product cube root
+                new_feature = f'prod^1/3_{f1}_{f2}'
+                df[new_feature] = np.cbrt(df[f1] * df[f2])
+            
+            ## Logarithmic and exponential interactions
+            elif interact == 'log_inter':           # Logarithmic interaction
+                new_feature = f'log_inter_{f1}_{f2}'
+                df[new_feature] = np.log(df[f1] + 1) * np.log(df[f2] + 1)
+            elif interact == 'exp_inter':           # Exponential interaction
+                new_feature = f'exp_inter_{f1}_{f2}'
+                df[new_feature] = np.exp(df[f1]) * np.exp(df[f2])
+
+            ## Statistical interactions
+            elif interact == 'mean_diff':           # Mean difference
+                new_feature = f'mean_diff_{f1}_{f2}'
+                df[new_feature] = df[f1] - df[[f1, f2]].mean(axis=1)
+            elif interact == 'mean_ratio':          # Mean ratio
+                new_feature = f'mean_ratio_{f1}_{f2}'
+                df[new_feature] = df[f1] / df[[f1, f2]].mean(axis=1)
+
+            if verbose:
+                summary_str = f'Created new feature: {new_feature} ({interact} interaction)'
+                action_summary.append(summary_str)
+                print(summary_str)
+
+        if not preserve_features:
+            if verbose:
+                drop_str = f'Dropping original features {f1} and {f2} from DataFrame.'
+                action_summary.append(drop_str)
+                print(drop_str)
+            df.drop(columns=[f1,f2], inplace=True)
+
+    ### "exploratory" interaction creation paradigm
+    ### i.e. all possible interactions between all features in provided list
+    if features_list:
+        # Perform interaction term creation with itertools.combinations
+        if len(features_list) == 1:
+            feature_combinations = [(features_list[0], None)]
+        else:
+            feature_combinations = list(combinations(set(features_list), 2))
+        if verbose:
+            print("All combinations of submitted 'features_list' elements:")
+            print(feature_combinations)
+        # Create flag for "only single-feature interactions present"
+        single_feat_interactions_only = 0
+        # Adjust if necessary
+        if set(interact_types).issubset(set(['^2', '^3', '^1/2', '^1/3', 'e^x'])):
+            single_feat_interactions_only = 1
+            
+        for feature, other_feature in feature_combinations:
+            for interact in interact_types:
+                
+                # Arithmetic interactions
+                if interact == '+':           # Sum
+                    new_feature = f'{feature}_+_{other_feature}'
+                    df[new_feature] = df[feature] + df[other_feature]
+                elif interact == '-':           # Difference
+                    new_feature = f'{feature}_-_{other_feature}'
+                    df[new_feature] = df[feature] - df[other_feature]
+                elif interact == '*':             # Product
+                    new_feature = f'{feature}_*_{other_feature}'
+                    df[new_feature] = df[feature] * df[other_feature]
+                elif interact == '/':           # Quotient
+                    new_feature = f'{feature}_/_{other_feature}'
+                    df[new_feature] = df[feature] / df[other_feature]
+                    # Replace infinite values with NaN
+                    df[new_feature] = df[new_feature].replace([np.inf, -np.inf], np.nan)
+                    
+                    if verbose:
+                        print('***Div-by-zero errors are replaced with NaN. Take care to handle these and propagated-NaNs in your analysis.***')
+
+                # Exponential interactions
+                elif interact == '^2':          # Square
+                    new_feature = f'{feature}^2'
+                    if new_feature not in df.columns:
+                        df[new_feature] = df[feature] ** 2
+                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
+                        new_feature_2 = f'{other_feature}^2'
+                        df[new_feature_2] = df[other_feature] ** 2
+                elif interact == '^3':          # Cube
+                    new_feature = f'{feature}^3'
+                    if new_feature not in df.columns:
+                        df[new_feature] = df[feature] ** 3
+                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
+                        new_feature_2 = f'{other_feature}^3'
+                        df[new_feature_2] = df[other_feature] ** 3
+                elif interact == '^1/2':        # Square root
+                    new_feature = f'{feature}^1/2'
+                    if new_feature not in df.columns:
+                        df[new_feature] = np.sqrt(df[feature])
+                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
+                        new_feature_2 = f'{other_feature}^1/2'
+                        df[new_feature_2] = np.sqrt(df[other_feature])
+                elif interact == '^1/3':        # Cube root
+                    new_feature = f'{feature}^1/3'
+                    if new_feature not in df.columns:
+                        df[new_feature] = np.cbrt(df[feature])
+                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
+                        new_feature_2 = f'{other_feature}^1/3'
+                        df[new_feature_2] = np.cbrt(df[other_feature])
+                elif interact == 'e^x':         # Exponential
+                    new_feature = f'e^{feature}'
+                    if new_feature not in df.columns:
+                        df[new_feature] = np.exp(df[feature])
+                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
+                        new_feature_2 = f'e^{other_feature}'
+                        df[new_feature_2] = np.exp(df[other_feature])
+
+                # Distance interactions
+                elif interact == 'magnitude':   # Magnitude
+                    new_feature = f'magnitude_{feature}_{other_feature}'
+                    df[new_feature] = np.sqrt(df[feature] ** 2 + df[other_feature] ** 2)
+                elif interact == 'magsum':      # Magnitude sum
+                    new_feature = f'magsum_{feature}_{other_feature}'
+                    df[new_feature] = np.abs(df[feature] + df[other_feature])
+                elif interact == 'magdiff':     # Magnitude difference
+                    new_feature = f'magdiff_{feature}_{other_feature}'
+                    df[new_feature] = np.abs(df[feature] - df[other_feature])
+
+                # Polynomial and other roots
+                elif interact == 'poly':        # Polynomial
+                    new_feature = f'poly_{feature}_{other_feature}'
+                    df[new_feature] = df[feature] * df[other_feature] + df[feature] ** 2 + df[other_feature] ** 2
+                elif interact == 'prod^1/2':    # Product square root
+                    new_feature = f'prod^1/2_{feature}_{other_feature}'
+                    df[new_feature] = np.sqrt(np.abs(df[feature] * df[other_feature]))
+                elif interact == 'prod^1/3':    # Product cube root
+                    new_feature = f'prod^1/3_{feature}_{other_feature}'
+                    df[new_feature] = np.cbrt(df[feature] * df[other_feature])
+
+                # Logarithmic and exponential interactions
+                elif interact == 'log_inter':   # Logarithmic interaction
+                    new_feature = f'log_inter_{feature}_{other_feature}'
+                    df[new_feature] = np.log(df[feature] + 1) * np.log(df[other_feature] + 1)
+                elif interact == 'exp_inter':   # Exponential interaction
+                    new_feature = f'exp_inter_{feature}_{other_feature}'
+                    df[new_feature] = np.exp(df[feature]) * np.exp(df[other_feature])
+
+                # Statistical interactions
+                elif interact == 'mean_diff':   # Mean difference
+                    new_feature = f'mean_diff_{feature}_{other_feature}'
+                    df[new_feature] = df[feature] - df[[feature, other_feature]].mean(axis=1)
+                elif interact == 'mean_ratio':  # Mean ratio
+                    new_feature = f'mean_ratio_{feature}_{other_feature}'
+                    df[new_feature] = df[feature] / df[[feature, other_feature]].mean(axis=1)
+
+                if verbose:
+                    summary_str = f'Created new feature: {new_feature} ({interact} interaction)'
+                    action_summary.append(summary_str)
+                    print(summary_str)
+                    if (single_feat_interactions_only == 1) and (feature_combinations[0][1] != None):
+                        summary_str_2 = f'Created new feature: {new_feature_2} ({interact} interaction)'
+                        action_summary.append(summary_str_2)
+                        print(summary_str_2)
+
+        # Drop original features if user specifies
+        if not preserve_features:
+            if verbose:
+                drop_str = f'Dropping original features from DataFrame:\n{features_list}'
+                action_summary.append(drop_str)
+                print(drop_str)
+            df.drop(columns=features_list, inplace=True)
+
+    # Closing verbosity
+    if verbose:
+        iter_input = 0
+        while True:
+            if iter_input == 0:
+                input2 = input("\nOperations complete. Would you like an action summary? (Y/N): ")
+            elif iter_input > 0:
+                input2 = input("-> ")
+
+            if input2.lower() == 'y':
+                print("\nThe following actions were performed by build_interactions():")
+                for action in action_summary:
+                    print(action)
+                break
+            elif input2.lower() == 'n':
+                break
+            else:
+                print("Invlid input. Please enter either 'Y' or 'N'.")
+                iter_input += 1
+    if verbose:
+        print('-' * 50)  # Visual separator
+        print('Feature interaction complete. Returning modified dataframe.')
+        print('-' * 50)  # Visual separator
+
+    #TODO: Implement verbosity conditions
+    #TODO: Implement warnings about large feature space and allow for cancellation
+
+    return df 
 
 
 def _prep_df_core(
