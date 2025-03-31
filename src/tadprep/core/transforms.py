@@ -3584,7 +3584,6 @@ def _transform_core(
 
         # Calculate statistics
         skew = series.skew()
-        min_val = series.min()
         has_zeros = (series == 0).any()
         has_negs = (series < 0).any()
 
