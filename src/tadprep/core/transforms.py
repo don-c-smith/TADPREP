@@ -3895,7 +3895,7 @@ def _transform_core(
         else:
             # For right-skewed data (positive skew)
             if skew > HIGH_SKEW:
-                # Group transformations by data requirements
+                # Grouping transformations by data requirements
 
                 # Transformations for strictly positive data (no zeros, no negatives)
                 if not has_negs and not has_zeros:
@@ -4023,10 +4023,6 @@ def _transform_core(
         return result, desc
 
     # Begin main function execution
-    if df.empty:
-        print('DataFrame is empty. No transformation possible.')
-        return df
-
     if verbose:
         print('-' * 50)
         print('Beginning feature transformation process.')
@@ -4044,13 +4040,13 @@ def _transform_core(
             # Skip binary features (0/1 values)
             if len(unique_vals) <= 2 and all(float(x).is_integer() for x in unique_vals if pd.notna(x)):
                 if verbose:
-                    print(f'Excluding "{column}" from transformation - appears to be binary/categorical.')
+                    print(f'Excluding "{column}" from transformation - this feature appears to be binary/categorical.')
                 continue
             filtered_cols.append(column)
 
         if not filtered_cols:
             if verbose:
-                print('No suitable numerical features found for transformation.')
+                print('No suitable numerical features were found for transformation.')
             return df
 
         # In verbose mode, allow user to select features interactively
@@ -4070,7 +4066,7 @@ def _transform_core(
 
                 if selection == '1':
                     final_features = filtered_cols
-                    # No break needed - loop will exit since final_features is no longer None
+                    # No break needed - the loop will exit natively since final_features is no longer None
 
                 elif selection == '2':
                     # Show features for selection
@@ -4081,7 +4077,7 @@ def _transform_core(
                     while True:  # Loop for feature selection
                         # Get user selection
                         user_input = input(
-                            '\nEnter the feature numbers to transform (comma-separated) or "C" to cancel: ')
+                            '\nEnter the feature numbers to transform (comma-separated) or enter "C" to cancel: ')
 
                         if user_input.lower() == 'c':
                             print('Feature selection cancelled.')
@@ -4102,7 +4098,7 @@ def _transform_core(
 
                         except ValueError:
                             print('Invalid input. Please enter comma-separated numbers.')
-                            continue  # Try feature selection again
+                            continue  # Try running the feature selection process again
 
                 elif selection == '3':
                     print('Transformation cancelled.')
@@ -4113,6 +4109,7 @@ def _transform_core(
         else:
             # In non-verbose mode, automatically use all identified numerical features
             final_features = filtered_cols
+
     else:
         # Validate provided features
         missing_cols = [col for col in features_to_transform if col not in df.columns]
@@ -4141,7 +4138,7 @@ def _transform_core(
             print('- Square/Cube: For left-skewed data, amplifies differences in larger values')
             print('- Reciprocal (1/x): Reverses the order of values, transforms very skewed distributions')
             print('\nNOTE: Different transformations are appropriate for different data distributions.')
-            print('Skewness will be analyzed to recommend suitable transformation methods.')
+            print('Skewness of the data will be analyzed to recommend suitable transformation methods.')
 
     # Track transformations for summary
     transform_records = []
@@ -4170,9 +4167,11 @@ def _transform_core(
             pct_null = (null_count / len(df) * 100)
             print(f'Warning: "{feature}" contains {null_count} null values ({pct_null:.2f}%).')
             print('Transformations will be applied only to non-null values.')
+
             if verbose:
                 if input('Continue with transforming this feature? (Y/N): ').lower() != 'y':
                     continue
+
             # In non-verbose mode, ask for confirmation on high-nullity features
             elif pct_null > 30:  # If more than 30% of values are null
                 if input('Continue with transforming this feature? (Y/N): ').lower() != 'y':
@@ -4196,27 +4195,27 @@ def _transform_core(
             if abs(skew) > HIGH_SKEW:
                 print(f'This feature is{"" if skew > 0 else " negatively"} skewed.')
                 if not skip_warnings:
-                    print('A transformation may help normalize the distribution.')
+                    print('A transformation may help normalize the distribution of this feature.')
 
             # Show zeros and negatives
             has_zeros = (df[feature] == 0).any()
             has_negs = (df[feature] < 0).any()
             if has_zeros:
-                print(f'This feature contains zeros. Some transformations (like log) may not be appropriate.')
+                print(f'This feature contains zeros. Some transforms (e.g. log transforms) may not be appropriate.')
             if has_negs:
-                print(f'This feature contains negative values. Some transformations require positive data only.')
+                print(f'This feature contains negative values. Some transforms require positive data only.')
 
-            # Offer to show distribution plot
-            if input('\nWould you like to see the current distribution? (Y/N): ').lower() == 'y':
-                plot_dist(df[feature], feature)
+            # Offer to show a distribution plot
+            if input('\nWould you like to see the current feature distribution? (Y/N): ').lower() == 'y':
+                plot_dist(df[feature], feature)  # Call plotting helper function
 
         # Get transformation suggestions based on data characteristics
-        suggestions = suggest_transform(df[feature])
+        suggestions = [s for s in suggest_transform(df[feature]) if not s.startswith('WARNING:')]
 
-        # Check if there's a warning about sample size
-        if any(sugg.startswith('WARNING:') for sugg in suggestions):
+        # Skip features with no valid suggestions
+        if not suggestions:
             if verbose:
-                print(f"\n{suggestions[0]}")
+                print(f"\nInsufficient samples present. Minimum required: {MIN_SAMPLES}")
                 print(f'Skipping transformation for feature "{feature}".')
             else:
                 print(f'Skipping "{feature}" - insufficient data (Minimum instances required: {MIN_SAMPLES}).')
@@ -4234,12 +4233,13 @@ def _transform_core(
         has_zeros = (df[feature] == 0).any()
         has_negs = (df[feature] < 0).any()
 
-        # Use set to avoid duplicates
+        # Use a set to avoid duplicate listings
         methods_set = set()
 
         # Add methods appropriate for the data characteristics
         if not has_negs and not has_zeros:
             methods_set.update(['log', 'log10', 'sqrt', 'reciprocal', 'boxcox'])
+
         elif not has_negs:
             methods_set.update(['log1p', 'sqrt'])
 
@@ -4286,6 +4286,7 @@ def _transform_core(
                 continue
 
             selected_method = methods[method_idx]
+
         else:
             # In non-verbose mode, select the first recommended transformation that's valid
             valid_suggs = [sugg for sugg in suggestions if sugg in methods]
@@ -4333,7 +4334,7 @@ def _transform_core(
                 if input('\nWould you like to see a comparison of the distributions? (Y/N): ').lower() == 'y':
                     plot_comp(original_values, df[target_column], feature, selected_method)
             else:
-                print(f'Transformed "{feature}" using {desc}.')
+                print(f'Transformed "{feature}" using a {desc} transform.')
 
         except Exception as exc:
             print(f'Error transforming feature "{feature}": {exc}')
@@ -4356,7 +4357,7 @@ def _transform_core(
                 print('-' * 50)
 
             if preserve_features:
-                print('NOTE: Original features were preserved alongside transformed columns.')
+                print('NOTE: Original features were preserved alongside the transformed features.')
 
     if verbose:
         print('-' * 50)
