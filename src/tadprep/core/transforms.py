@@ -4604,7 +4604,7 @@ def _extract_datetime_core(
                     if verbose:
                         print(f'Converted "{col}" to datetime format.')
 
-                except Exception as exc:
+                except (ValueError, TypeError, OverflowError) as exc:
                     print(f'Could not convert "{col}" to datetime: {str(exc)}')
             else:
                 valid_cols.append(col)
@@ -4646,9 +4646,8 @@ def _extract_datetime_core(
 
                 extracted_cols.append(new_col)
 
-            except Exception as exc:
-                if verbose:
-                    print(f'Could not extract {component} from {col}: {str(exc)}')
+            except (AttributeError, ValueError, TypeError) as exc:
+                print(f'Could not extract {component} from {col}: {str(exc)}')
 
     # Remove original datetime columns if not preserving
     if not preserve_features:
