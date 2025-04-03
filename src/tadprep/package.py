@@ -646,67 +646,48 @@ def transform(
         skip_warnings: bool = False
 ) -> pd.DataFrame:
     """
-    Interactively transforms numerical features using various mathematical transformations.
+    Transforms numerical features using various mathematical transformations.
 
     Applies transformations to improve data distributions for modeling, with a focus on
     normalization and linearization. The function analyzes data characteristics and
     suggests appropriate transformations based on distribution properties.
 
-    Supports various transformations including:
-    - Logarithmic: log, log10, log1p (for handling different data requirements)
+    Supports transformations including:
+    - Logarithmic: log, log10, log1p (for right-skewed data)
     - Power: sqrt, square, cube, reciprocal
-    - Statistical: Box-Cox, Yeo-Johnson (for distribution normalization)
+    - Statistical: Box-Cox, Yeo-Johnson (for normalization)
 
     Parameters
     ----------
     df : pandas.DataFrame
         The DataFrame containing features to transform.
     features_to_transform : list[str] | None, default=None
-        Optional list of features to transform. If None, method will help identify
-        numerical features and exclude likely categorical ones.
+        Optional list of features to transform. If None, method will identify
+        numerical features automatically.
     verbose : bool, default=True
         Controls whether detailed guidance, explanations, and visualizations are displayed.
-        When True, offers distribution plots and transformation explanations.
     preserve_features : bool, default=False
-        Controls whether original features are preserved when transforming. When True,
-        creates new columns with the naming pattern '{original_column}_transformed'.
-        If a column with that name already exists, a numeric suffix is added:
-        '{original_column}_transformed_1'.
+        When True, creates new columns with transformed values instead of replacing
+        original features.
     skip_warnings : bool, default=False
-        Controls whether all best-practice-related warnings about distributions and
-        nulls are skipped. Setting to True streamlines the process for experienced users.
+        Controls whether distribution and data quality warnings are skipped.
 
     Returns
     -------
     pandas.DataFrame
-        The DataFrame with transformed features. If preserve_features=True, original
-        features are retained and new columns are added with transformed values.
-
-    Notes
-    -----
-    Some transformations have specific data requirements:
-    - Log and Box-Cox require strictly positive values (no zeros or negatives)
-    - Log1p and sqrt require non-negative values (no negatives)
-    - Reciprocal cannot handle zero values
-
-    The function automatically identifies which transformations are valid for each feature
-    based on its characteristics (presence of zeros, negative values, etc.).
+        DataFrame with transformed features.
 
     Examples
     --------
     >>> import pandas as pd
     >>> import tadprep as tp
     >>> df = pd.DataFrame({'A': [1, 2, 100, 200], 'B': ['x', 'y', 'z', 'w']})
-    >>> # Basic usage - let function identify numerical features
+    >>> # Basic usage with automatic feature detection
     >>> df_transformed = tp.transform(df)
     >>> # Specify features to transform
-    >>> df_transformed_specified = tp.transform(df, features_to_transform=['A'])
-    >>> # Minimize output
-    >>> df_transformed_quiet = tp.transform(df, verbose=False)
-    >>> # Skip distribution warnings
-    >>> df_transformed_nowarn = tp.transform(df, skip_warnings=True)
-    >>> # Preserve original features, creating new transformed columns
-    >>> df_with_both = tp.transform(df, preserve_features=True)
+    >>> df_transformed = tp.transform(df, features_to_transform=['A'])
+    >>> # Preserve original features alongside transformed versions
+    >>> df_transformed = tp.transform(df, preserve_features=True)
     """
     # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
@@ -728,11 +709,10 @@ def transform(
             missing = [col for col in features_to_transform if col not in df.columns]
             raise ValueError(f'Features not found in DataFrame: {missing}')
 
-    # Validate preserve_features parameter
+    # Validate boolean parameters
     if not isinstance(preserve_features, bool):
         raise TypeError('preserve_features must be a boolean')
 
-    # Validate skip_warnings parameter
     if not isinstance(skip_warnings, bool):
         raise TypeError('skip_warnings must be a boolean')
 
@@ -750,16 +730,14 @@ def extract_datetime(
         df: pd.DataFrame,
         datetime_features: list[str] | None = None,
         verbose: bool = True,
-        preserve_features: bool = False,
-        components: list[str] | None = None
+        preserve_features: bool = False
 ) -> pd.DataFrame:
     """
-    Extracts useful features from datetime columns in a dataframe, converting temporal
-    information into features that machine learning models can use more effectively.
+    Extracts useful features from datetime columns in a dataframe.
 
-    This function identifies datetime columns, extracts selected components (year, month, day, etc.),
-    and creates new features. It can also detect time series data and offer additional
-    time-specific components.
+    This function identifies datetime columns and automatically extracts standard component
+    features (year, month, day, dayofweek, hour, minute, quarter, dayofyear) for each datetime column.
+    It creates new columns with the naming pattern '{original_column}_{component}'.
 
     Parameters
     ----------
@@ -767,29 +745,17 @@ def extract_datetime(
         The DataFrame containing datetime features to extract.
     datetime_features : list[str] | None, default=None
         Optional list of datetime features to process. If None, the function will
-        identify datetime features interactively.
+        identify datetime features automatically.
     verbose : bool, default=True
         Controls whether detailed guidance and explanations are displayed.
     preserve_features : bool, default=False
         Controls whether original datetime features are preserved in the DataFrame.
         When False, original datetime columns are removed after extraction.
-    components : list[str] | None, default=None
-        Optional list of specific datetime components to extract. If None, the function
-        will help identify components interactively.
-
-        Standard components include:
-        - year, month, day, quarter
-        - dayofweek, weekofyear, dayofyear
-        - hour, minute
-
-        For time series data, additional components include:
-        - is_weekend, is_month_start, is_month_end
-        - is_quarter_start, is_quarter_end
 
     Returns
     -------
     pandas.DataFrame
-        Modified dataframe with extracted datetime features. If preserve_features=True,
+        Modified DataFrame with extracted datetime features. If preserve_features=True,
         original datetime columns are retained.
 
     Examples
@@ -800,14 +766,10 @@ def extract_datetime(
     ...     'date': pd.date_range('2021-01-01', periods=5),
     ...     'value': [10, 20, 30, 40, 50]
     ... })
-    >>> # Basic usage - let function identify components interactively
+    >>> # Basic usage - let function identify datetime columns automatically
     >>> df_extracted = tp.extract_datetime(df)
-    >>> # Specify datetime columns and components
-    >>> df_extracted = tp.extract_datetime(
-    ...     df,
-    ...     datetime_features=['date'],
-    ...     components=['year', 'month', 'dayofweek']
-    ... )
+    >>> # Specify datetime columns to process
+    >>> df_extracted = tp.extract_datetime(df, datetime_features=['date'])
     >>> # Keep original datetime columns
     >>> df_extracted = tp.extract_datetime(df, preserve_features=True)
     >>> # Minimize output
@@ -833,33 +795,13 @@ def extract_datetime(
             missing = [col for col in datetime_features if col not in df.columns]
             raise ValueError(f'Features not found in DataFrame: {missing}')
 
-    # Validate components if provided
-    valid_components = [
-        'year', 'month', 'day', 'dayofweek', 'hour', 'minute',
-        'second', 'quarter', 'weekofyear', 'dayofyear',
-        'is_weekend', 'is_month_start', 'is_month_end',
-        'is_quarter_start', 'is_quarter_end'
-    ]
-
-    if components is not None:
-        if not isinstance(components, list):
-            raise TypeError('components must be a list of strings')
-
-        if not all(isinstance(comp, str) for comp in components):
-            raise TypeError('All component names must be strings')
-
-        invalid = [comp for comp in components if comp not in valid_components]
-        if invalid:
-            raise ValueError(f'Invalid component names: {invalid}. Valid components are: {valid_components}')
-
     # Validate preserve_features
     if not isinstance(preserve_features, bool):
         raise TypeError('preserve_features must be a boolean')
 
-    # Call core implementation
+    # Call core implementation, passing datetime_features as dt_feats
     return _extract_datetime_core(
         df,
-        datetime_features=datetime_features,
+        dt_feats=datetime_features,
         verbose=verbose,
-        preserve_features=preserve_features,
-        components=components)
+        preserve_features=preserve_features)
