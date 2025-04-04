@@ -511,6 +511,478 @@ def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     return df  # Return modified dataframe
 
 
+def _find_outliers_core(df: pd.DataFrame, method: str = 'iqr', threshold: float = None,
+                        verbose: bool = True) -> dict:
+    """
+    Core function to detect outliers in dataframe features using a specified detection method.
+
+    This function analyzes numerical features in the dataframe and identifies outliers using the specified detection
+    method. It supports three common approaches for outlier detection: IQR-based detection, Z-score method, and
+    Modified Z-score method.
+
+    Args:
+        df (pd.DataFrame): The DataFrame to analyze for outliers
+        method (str, optional): Outlier detection method to use.
+            Options:
+              - 'iqr': Interquartile Range (default)
+              - 'zscore': Standard Z-score
+              - 'modified_zscore': Modified Z-score
+        threshold (float, optional): Threshold value for outlier detection. If None, uses method-specific defaults:
+            - For IQR: 1.5 × IQR
+            - For Z-score: 3.0 standard deviations
+            - For Modified Z-score: 3.5
+        verbose (bool, default=True): Whether to print detailed information about outliers
+    """
+    def numpy_to_python(obj):
+        """This helper function converts Numpy numeric types to Python native types."""
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: numpy_to_python(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [numpy_to_python(item) for item in obj]
+        return obj
+
+    # Validate selected method
+    valid_methods = ['iqr', 'zscore', 'modified_zscore']
+    if method not in valid_methods:
+        raise ValueError(f'Invalid outlier detection method: "{method}". '
+                         f'Valid options are: {", ".join(valid_methods)}')
+
+    # Set appropriate default thresholds based on method
+    if threshold is None:
+        if method == 'iqr':
+            threshold = 1.5
+        elif method == 'zscore':
+            threshold = 3.0
+        elif method == 'modified_zscore':
+            threshold = 3.5
+
+    # Identify all numerical features
+    num_cols = [column for column in df.columns if pd.api.types.is_numeric_dtype(df[column])]
+
+    # Handle any case where no numerical features are present
+    if not num_cols:
+        if verbose:
+            print('No numerical features found in dataframe. Outlier detection requires numerical data.')
+        return {
+            'summary': {
+                'total_outliers': 0,
+                'affected_rows_count': 0,
+                'affected_rows_percent': 0.0,
+                'features_with_outliers': []
+            },
+            'feature_results': {}
+        }
+
+    if verbose:
+        print('-' * 50)
+        print(f'Analyzing {len(num_cols)} numerical features for outliers...')
+        print(f'Detection method: {method}')
+
+        # Print threshold information based on the selected method
+        if method == 'iqr':
+            print(f'IQR threshold multiplier: {threshold}')
+            print('\nIQR METHOD CONTEXT:')
+            print('- Best for: Data with unknown distribution, resistant to extreme outliers')
+            print('- Limitations: Less effective with small datasets, may miss subtle outliers')
+            print('- Use case: General-purpose outlier detection for most datasets')
+
+        elif method == 'zscore':
+            print(f'Z-score threshold: {threshold} standard deviations')
+            print('\nZ-SCORE METHOD CONTEXT:')
+            print('- Best for: Normally distributed data, larger datasets')
+            print('- Limitations: Sensitive to extreme outliers, skewed distributions')
+            print('- Use case: When data approximates normal distribution and outliers are moderate')
+
+        elif method == 'modified_zscore':
+            print(f'Modified Z-score threshold: {threshold}')
+            print('\nMODIFIED Z-SCORE METHOD CONTEXT:')
+            print('- Best for: Datasets with extreme outliers, skewed distributions')
+            print('- Limitations: More complex to interpret than standard Z-score')
+            print('- Use case: Small datasets or when extreme outliers are present')
+        print('-' * 50)
+
+    # Initialize results dictionary
+    results = {
+        'summary': {
+            'total_outliers': 0,
+            'affected_rows_count': 0,
+            'affected_rows_percent': 0.0,
+            'features_with_outliers': []
+        },
+        'feature_results': {}
+    }
+
+    # Initialize array to track all instances with outliers
+    outlier_rows = np.zeros(len(df), dtype=bool)
+
+    # Process each numerical feature
+    for column in num_cols:
+        # Skip columns with all NaN values
+        if df[column].isna().all():
+            if verbose:
+                print(f'Skipping "{column}": All values are NaN/Missing.')
+            continue
+
+        # Skip columns with only one unique value
+        if df[column].nunique() <= 1:
+            if verbose:
+                print(f'Skipping "{column}": No variance present in feature.')
+            continue
+
+        if verbose:
+            print(f'\nAnalyzing feature: "{column}"')
+
+        # Get data without NaN values
+        data = df[column].dropna()
+
+        if method == 'iqr':
+            # IQR-based outlier detection
+            q1 = data.quantile(0.25)
+            q3 = data.quantile(0.75)
+            iqr = q3 - q1
+
+            # Define bounds using threshold (default 1.5)
+            lower_bound = q1 - threshold * iqr
+            upper_bound = q3 + threshold * iqr
+
+            method_desc = 'IQR-based detection'
+
+        elif method == 'zscore':
+            # Z-score based outlier detection
+            mean = data.mean()
+            std = data.std()
+
+            # Skip if standard deviation is zero
+            if std == 0:
+                if verbose:
+                    print(f'Skipping "{column}": Standard deviation is zero.')
+                continue
+
+            # Define bounds using Z-score threshold
+            lower_bound = mean - threshold * std
+            upper_bound = mean + threshold * std
+
+            method_desc = 'Z-score based detection'
+
+        elif method == 'modified_zscore':
+            # Modified Z-score based outlier detection
+            median = data.median()
+            # Median Absolute Deviation
+            mad = np.median(np.abs(data - median))
+
+            # Skip if MAD is zero
+            if mad == 0:
+                if verbose:
+                    print(f'Skipping "{column}": Median Absolute Deviation is zero.')
+                continue
+
+            # Constant 0.6745 is used to make MAD comparable to standard deviation for normal distributions
+            lower_bound = median - threshold * (mad / 0.6745)
+            upper_bound = median + threshold * (mad / 0.6745)
+
+            method_desc = 'Modified Z-score based detection'
+
+        # Identify outliers
+        outliers = df[
+            ((df[column] < lower_bound) | (df[column] > upper_bound)) & ~df[column].isna()]
+
+        # Store results
+        if not outliers.empty:
+            outlier_count = len(outliers)
+            outlier_percent = (outlier_count / len(data)) * 100
+
+            # Update global summary counts
+            results['summary']['total_outliers'] += outlier_count
+
+            # Update outlier rows tracking
+            outlier_rows = outlier_rows | (
+                    ((df[column] < lower_bound) | (df[column] > upper_bound)) & ~df[column].isna()).values
+
+            # Add feature to list of features with outliers
+            results['summary']['features_with_outliers'].append(column)
+
+            # Store feature-specific results
+            results['feature_results'][column] = {
+                'method': method,
+                'method_description': method_desc,
+                'outlier_count': outlier_count,
+                'outlier_percent': outlier_percent,
+                'outlier_indices': outliers.index.tolist(),
+                'thresholds': {
+                    'lower': lower_bound,
+                    'upper': upper_bound
+                }
+            }
+
+            if verbose:
+                print(f'Method: {method_desc}')
+                print(f'Found {outlier_count} outliers ({outlier_percent:.2f}% of non-null values)')
+                print(f'Thresholds: Lower = {lower_bound:.4f}, Upper = {upper_bound:.4f}')
+
+                # Show extreme outliers (up to 3 min and max)
+                if outlier_count > 0:
+                    print('Sample of outlier values:')
+                    extreme_low = outliers[outliers[column] < lower_bound][column].nsmallest(3)
+                    extreme_high = outliers[outliers[column] > upper_bound][column].nlargest(3)
+
+                    if not extreme_low.empty:
+                        print('Low outliers:', extreme_low.tolist())
+                    if not extreme_high.empty:
+                        print('High outliers:', extreme_high.tolist())
+
+        elif verbose:
+            print(f'No outliers detected using {method_desc}')
+
+    # Update summary with affected rows information
+    affected_rows_count = np.sum(outlier_rows)
+    affected_rows_percent = (affected_rows_count / len(df)) * 100
+    results['summary']['affected_rows_count'] = int(affected_rows_count)
+    results['summary']['affected_rows_percent'] = affected_rows_percent
+
+    # Print summary if in verbose mode
+    if verbose:
+        print('-' * 50)
+        print('OUTLIER DETECTION SUMMARY:')
+        print('-' * 50)
+        print(f'Total outliers detected: {results["summary"]["total_outliers"]}')
+        print(f'Rows containing outliers: {affected_rows_count} ({affected_rows_percent:.2f}% of all rows)')
+
+        if results['summary']['features_with_outliers']:
+            print(f'Features containing outliers: {len(results["summary"]["features_with_outliers"])}')
+            for feature in results['summary']['features_with_outliers']:
+                result = results['feature_results'][feature]
+                print(f'- {feature}: {result["outlier_count"]} outliers ({result["outlier_percent"]:.2f}%)')
+
+        else:
+            print('No outliers detected in any features.')
+
+    # Apply Numpy-to-Python conversion to the results dictionary
+    results = numpy_to_python(results)
+
+    # Return dictionary summarizing results of outlier analysis
+    return results
+
+
+def _find_corrs_core(df: pd.DataFrame, method: str = 'pearson', threshold: float = 0.8, verbose: bool = True) -> dict:
+    """
+    Core function to detect highly-correlated features in a dataframe.
+
+    This function analyzes numerical features in the dataframe and identifies pairs with
+    correlation coefficients exceeding the specified threshold. High correlations may indicate
+    redundant features that could be simplified or removed to improve model performance.
+
+    Args:
+        df (pd.DataFrame): The DataFrame to analyze for correlated features
+        method (str, optional): Correlation method to use. Options:
+            - 'pearson': Standard correlation coefficient (default)
+            - 'spearman': Rank correlation, robust to outliers and non-linear relationships
+            - 'kendall': Another rank correlation, more robust for small samples
+        threshold (float, optional): Correlation coefficient threshold (absolute value).
+            Defaults to 0.8. Values should be between 0 and 1.
+        verbose (bool, optional): Whether to print detailed information about correlations.
+            Defaults to True.
+
+    Returns:
+        dict: A dictionary containing correlation information with the following structure:
+            {
+                'summary': {
+                    'method': str,                # Correlation method used
+                    'num_correlated_pairs': int,  # Total number of highly correlated pairs
+                    'max_correlation': float,     # Maximum correlation found
+                    'avg_correlation': float,     # Average correlation among high pairs
+                    'features_involved': list,    # List of features involved in high correlations
+                },
+                'correlation_pairs': [
+                    {
+                        'feature1': str,          # Name of first feature
+                        'feature2': str,          # Name of second feature
+                        'correlation': float,     # Correlation coefficient
+                        'abs_correlation': float  # Absolute correlation value
+                    },
+                    ...
+                ]
+            }
+    """
+    def numpy_to_python(obj):
+        """This helper function converts Numpy numeric types to Python native types."""
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: numpy_to_python(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [numpy_to_python(item) for item in obj]
+        return obj
+
+    # Validate correlation method
+    valid_methods = ['pearson', 'spearman', 'kendall']
+    if method not in valid_methods:
+        raise ValueError(f'Invalid correlation method: "{method}". '
+                         f'Valid options are: {", ".join(valid_methods)}')
+
+    # Set appropriate default thresholds based on method if None is passed as value for threshold parameter
+    if threshold is None:
+        if method == 'pearson':
+            threshold = 0.8
+        elif method == 'spearman':
+            threshold = 0.6
+        elif method == 'kendall':
+            threshold = 0.5
+
+    # Validate threshold
+    if not 0 <= threshold <= 1:
+        raise ValueError(f'Threshold must be between 0 and 1, got {threshold}')
+
+    # Identify numerical features
+    num_cols = [column for column in df.columns if pd.api.types.is_numeric_dtype(df[column])]
+
+    # Handle any case where not enough numerical features are present
+    if len(num_cols) <= 1:
+        if verbose:
+            print(
+                'Insufficient numerical features found. Correlation analysis requires at least two numerical features.')
+
+        return {
+            'summary': {
+                'method': method,
+                'num_correlated_pairs': 0,
+                'max_correlation': None,
+                'avg_correlation': None,
+                'features_involved': []
+            },
+            'correlation_pairs': []
+        }
+
+    # Process/procedural information for verbose mode
+    if verbose:
+        print('-' * 50)
+        print(f'Analyzing correlations among {len(num_cols)} numerical features...')
+        print(f'Using {method} correlation with threshold: ± {threshold}')
+
+        # Add method descriptions here
+        if method == 'pearson':
+            print('\nMethod description: Pearson correlation measures linear relationships between features.')
+            print('Best for: Normally distributed data with linear relationships and no significant outliers.')
+            print('Limitations: Sensitive to outliers and only detects linear relationships.')
+
+        elif method == 'spearman':
+            print('\nMethod description: Spearman correlation measures monotonic (consistently increasing or '
+                  'decreasing) relationships using ranks.')
+            print('Best for: Data with non-linear but monotonic relationships or when outliers are present.')
+            print('Limitations: Less powerful than Pearson for detecting truly linear relationships.')
+
+        elif method == 'kendall':
+            print('\nMethod description: Kendall\'s Tau measures concordance (agreement in ranking direction) between '
+                  'feature pairs.')
+            print('Best for: Small samples, ordinal data, or when robustness to outliers is essential.')
+            print('Limitations: More computationally intensive and typically has lower values than other methods.')
+        print('-' * 50)
+
+    # Build correlation matrix
+    corr_matrix = df[num_cols].corr(method=method)
+
+    # Initialize results dictionary and tracking lists
+    results = {
+        'summary': {
+            'method': method,
+            'num_correlated_pairs': 0,
+            'max_correlation': 0.0,
+            'avg_correlation': 0.0,
+            'features_involved': []
+        },
+        'correlation_pairs': []
+    }
+
+    # Instantiate empty data structures for tracking correlated features
+    corr_features = set()
+    corr_values = []
+
+    # Find highly correlated pairs
+    # I'll iterate only through the 'upper triangle' of the correlation matrix
+    # The idea is to avoid duplicating pairs (e.g. corr of A,B is same as corr of B,A)
+    for i in range(len(num_cols)):
+        for j in range(i + 1, len(num_cols)):
+            corr_value = corr_matrix.iloc[i, j]
+            abs_corr = abs(corr_value)
+
+            # Check if correlation exceeds threshold
+            if abs_corr >= threshold:
+                feature1 = num_cols[i]
+                feature2 = num_cols[j]
+
+                # Add features to tracking set
+                corr_features.add(feature1)
+                corr_features.add(feature2)
+
+                # Add correlation value to tracking list
+                corr_values.append(abs_corr)
+
+                # Add pair details to results
+                results['correlation_pairs'].append({
+                    'feature_1': feature1,
+                    'feature_2': feature2,
+                    'correlation': corr_value,
+                    'absolute_correlation': abs_corr
+                })
+
+    # Update summary information
+    num_pairs = len(results['correlation_pairs'])
+    results['summary']['num_correlated_pairs'] = num_pairs
+    results['summary']['features_involved'] = sorted(list(corr_features))
+
+    if num_pairs > 0:
+        results['summary']['max_correlation'] = max(corr_values)
+        results['summary']['avg_correlation'] = sum(corr_values) / num_pairs
+
+    # Sort correlation pairs by absolute correlation value (descending)
+    results['correlation_pairs'] = sorted(
+        results['correlation_pairs'],
+        key=lambda x: x['absolute_correlation'],
+        reverse=True
+    )
+
+    # Print results if verbose is True
+    if verbose:
+        if num_pairs > 0:
+            print(f'Found {num_pairs} feature pairs with {method} correlations of {threshold} or higher:')
+            print('-' * 50)
+
+            # Print each highly correlated pair
+            for pair in results['correlation_pairs']:
+                corr_sign = '+' if pair['correlation'] >= 0 else '-'
+                print(f"{pair['feature_1']} and {pair['feature_2']}: {corr_sign}{pair['absolute_correlation']:.4f}")
+
+            print('-' * 50)
+            print(f'Maximum correlation found: {results["summary"]["max_correlation"]:.4f}')
+            print(f'Average absolute correlation among highly-correlated pairs: '
+                  f'{results["summary"]["avg_correlation"]:.4f}')
+            print(f'Total count of unique features involved in high correlations: {len(corr_features)}')
+
+            if len(corr_features) > 0:
+                print('\nIndividual features participating in high correlations:')
+                for feature in sorted(corr_features):
+                    # Count how many correlations involve this feature
+                    count = sum(1 for pair in results['correlation_pairs']
+                                if pair['feature_1'] == feature or pair['feature_2'] == feature)
+                    print(f'- {feature} (appears in {count} high-correlation pair{"s" if count > 1 else ""})')
+
+        else:
+            print(f'No feature pairs found with {method} correlation of ≥ {threshold}')
+
+        print('-' * 50)
+
+    # Apply Numpy-to-Python conversion to the results dictionary
+    results = numpy_to_python(results)
+
+    # Return results dictionary
+    return results
+
+
 def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: bool = False) -> pd.DataFrame:
     """
     Core function to rename features and to append the '_ord' and/or '_target' suffixes to ordinal or target features,
