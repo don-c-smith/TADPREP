@@ -14,7 +14,8 @@ from .package import (
     scale,
     prep_df,
     transform,
-    extract_datetime
+    extract_datetime,
+    make_plots
 )
 
 # Define exposure if "from tadprep import *" is called
@@ -31,7 +32,8 @@ __all__ = [
     'scale',
     'prep_df',
     'transform',
-    'extract_datetime'
+    'extract_datetime',
+    'make_plots'
 ]
 
 # Package metadata
