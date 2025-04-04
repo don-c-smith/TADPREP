@@ -12,7 +12,8 @@ from .core.transforms import (
     _scale_core,
     _prep_df_core,
     _transform_core,
-    _extract_datetime_core
+    _extract_datetime_core,
+    _make_plots_core
 )
 
 
@@ -805,3 +806,69 @@ def extract_datetime(
         dt_feats=datetime_features,
         verbose=verbose,
         preserve_features=preserve_features)
+
+
+def make_plots(df: pd.DataFrame, features_to_plot: list[str] | None = None) -> None:
+    """
+    Interactively creates and displays plots for features in a DataFrame.
+
+    This function guides users through the process of creating feature-level plots
+    based on the data characteristics of selected features. It supports visualization
+    of numerical, categorical, and datetime features using appropriate plot types.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The DataFrame containing features to plot.
+    features_to_plot : list[str] | None, default=None
+        Optional list of specific features to consider for plotting. If None, the
+        function will use all features in the DataFrame.
+
+    Returns
+    -------
+    None
+        This function displays plots but does not return any values.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import tadprep as tp
+    >>> df = pd.DataFrame({
+    ...     'A': [1, 2, 3, 4, 5],
+    ...     'B': ['x', 'y', 'z', 'z', 'y'],
+    ...     'C': [0.1, 0.2, 0.3, 0.4, 0.5]
+    ... })
+    >>> # Plot using all available features
+    >>> tp.make_plots(df)
+    >>>
+    >>> # Plot using only specified features
+    >>> tp.make_plots(df, features_to_plot=['A', 'B'])
+
+    Notes
+    -----
+    The function supports various plot types including:
+    - For single features: histograms, box plots, violin plots, count plots, bar plots
+    - For two features: scatter plots, line plots, heat maps, bar plots
+    - For three features: scatter plots with hue, line plots with hue, pair plots
+
+    Plot types are suggested based on feature data types (numerical, categorical, datetime),
+    and the user can select which plot type to create.
+    """
+    # Ensure input is a Pandas dataframe
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError('Input must be a pandas DataFrame')
+
+    # Ensure dataframe is not empty
+    if df.empty:
+        raise ValueError('Input DataFrame is empty')
+
+    # Validate features_to_plot if provided
+    if features_to_plot is not None:
+        if not isinstance(features_to_plot, list):
+            raise TypeError('features_to_plot must be a list of strings')
+
+        if not all(isinstance(col, str) for col in features_to_plot):
+            raise TypeError('All feature names in features_to_plot must be strings')
+
+    # Call the core function
+    _make_plots_core(df, features_to_plot=features_to_plot)
