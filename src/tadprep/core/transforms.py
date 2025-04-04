@@ -4660,3 +4660,379 @@ def _extract_datetime_core(
         print('Datetime component extraction complete. Returning modified dataframe.')
 
     return df
+
+
+def _make_plots_core(df: pd.DataFrame, features_to_plot: list[str] | None = None) -> None:
+    """
+    Core function to create and display plots for specified features in a DataFrame.
+
+    Interactively guides users through selecting features and plot types based on
+    the data characteristics of each feature. Supports plotting of numerical, categorical,
+    and datetime features using appropriate visualization methods.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame containing features to plot.
+        features_to_plot (list[str] | None, default=None): Optional list of features to plot.
+            If None, the function will help identify and select features.
+
+    Returns:
+        None. This function produces plots but does not return any values.
+    """
+    # Validate features_to_plot if provided
+    if features_to_plot is not None:
+        missing_cols = [col for col in features_to_plot if col not in df.columns]
+        if missing_cols:
+            print(f'Features not found in DataFrame: {missing_cols}')
+            print('These features will be ignored.')
+            features_to_plot = [col for col in features_to_plot if col in df.columns]
+
+        if not features_to_plot:  # If all provided features were invalid
+            print('No valid features to plot. Using all available features.')
+            features_to_plot = None
+
+    # Identify feature types
+    num_cols = []
+    cat_cols = []
+    datetime_cols = []
+
+    for col in df.columns:
+        # Check for datetime features
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            datetime_cols.append(col)
+        # Check for string/categorical features
+        elif pd.api.types.is_object_dtype(df[col]) or isinstance(df[col].dtype, pd.CategoricalDtype):
+            cat_cols.append(col)
+        # Check for numerical features
+        elif pd.api.types.is_numeric_dtype(df[col]):
+            num_cols.append(col)
+
+    # Try to convert string columns to datetime if they look like dates
+    for col in cat_cols[:]:  # Use a copy to iterate
+        if col not in datetime_cols:
+            try:
+                # Test conversion on first few non-null values
+                sample = df[col].dropna().head()
+                if not sample.empty and pd.to_datetime(sample, errors='coerce').notna().any():
+                    datetime_cols.append(col)
+                    cat_cols.remove(col)
+                    print(f'Column "{col}" contains datetime-like values and will be treated as datetime.')
+            except (ValueError, TypeError):
+                pass
+
+    # If specific features were requested, filter them by type
+    if features_to_plot is not None:
+        filtered_num_cols = [col for col in num_cols if col in features_to_plot]
+        filtered_cat_cols = [col for col in cat_cols if col in features_to_plot]
+        filtered_datetime_cols = [col for col in datetime_cols if col in features_to_plot]
+
+        num_cols = filtered_num_cols
+        cat_cols = filtered_cat_cols
+        datetime_cols = filtered_datetime_cols
+
+    def explain_plot_types():
+        """Explain available plot types based on feature characteristics."""
+        print('\nAvailable Plot Types:')
+        print('\nFor Numerical Features:')
+        print('- Histogram: Shows the distribution of a single numerical feature')
+        print('- Box Plot: Shows quartiles, median, and outliers of a numerical feature')
+        print('- Violin Plot: Similar to box plot but shows density estimate')
+        print('- Scatter Plot: Shows relationship between two numerical features')
+
+        print('\nFor Categorical Features:')
+        print('- Bar Plot: Shows counts or frequencies of categories')
+        print('- Count Plot: Shows counts for each category')
+        print('- Pie Chart: Shows proportion of each category as a slice of a circle')
+
+        print('\nFor Datetime Features:')
+        print('- Line Plot: Shows trends over time')
+        print('- Time Series: Shows values against datetime indices')
+
+        print('\nFor Mixed Feature Types:')
+        print('- Bar Plot: Numerical values grouped by categories')
+        print('- Box Plot: Distribution of numerical values across categories')
+        print('- Violin Plot: Distribution and density across categories')
+        print('- Scatter Plot with Hue: Points colored by a categorical variable')
+
+    # Offer explanation
+    user_explain = input('Would you like to see an explanation of available plot types? (Y/N): ').lower()
+    if user_explain == 'y':
+        explain_plot_types()
+
+    def select_features_to_plot():
+        """Allow user to select features to plot."""
+        # Create a comprehensive list of features with types
+        all_features = []
+        for col in df.columns:
+            if col in num_cols:
+                all_features.append((col, 'numerical'))
+            elif col in cat_cols:
+                all_features.append((col, 'categorical'))
+            elif col in datetime_cols:
+                all_features.append((col, 'datetime'))
+
+        # Display features to user
+        print('\nAvailable features:')
+        for idx, (col, col_type) in enumerate(all_features, 1):
+            print(f'{idx}. {col} ({col_type})')
+
+        # Get user selections
+        while True:
+            selections = input('\nEnter up to 3 feature numbers (comma-separated) to plot: ')
+            try:
+                indices = [int(idx.strip()) - 1 for idx in selections.split(',')]
+
+                # Validate indices
+                if not all(0 <= idx < len(all_features) for idx in indices):
+                    print('Error: Some feature numbers are out of range.')
+                    continue
+
+                # Check number of selections
+                if len(indices) > 3:
+                    print('Error: You can select at most 3 features.')
+                    continue
+
+                if len(indices) == 0:
+                    print('Error: You must select at least one feature.')
+                    continue
+
+                # Get selected features with their types
+                selected_features = [all_features[idx] for idx in indices]
+                return selected_features
+
+            except ValueError:
+                print('Error: Please enter valid numbers separated by commas.')
+
+    def get_appropriate_plot_types(selected_features):
+        """Determine appropriate plot types based on selected features."""
+        feature_types = [feature_type for _, feature_type in selected_features]
+
+        # For a single feature
+        if len(selected_features) == 1:
+            feature_type = feature_types[0]
+            if feature_type == 'numerical':
+                return ['histogram', 'boxplot', 'violinplot']
+
+            elif feature_type == 'categorical':
+                return ['countplot', 'barplot', 'pieplot']
+
+            elif feature_type == 'datetime':
+                return ['lineplot']
+
+        # For two features
+        elif len(selected_features) == 2:
+            # Two numerical features
+            if all(ft == 'numerical' for ft in feature_types):
+                return ['scatterplot', 'lineplot', 'heatmap']
+
+            # One numerical and one categorical
+            elif 'numerical' in feature_types and 'categorical' in feature_types:
+                return ['barplot', 'boxplot', 'violinplot']
+
+            # One numerical and one datetime
+            elif 'numerical' in feature_types and 'datetime' in feature_types:
+                return ['lineplot', 'scatterplot']
+
+            # Two categorical features
+            elif all(ft == 'categorical' for ft in feature_types):
+                return ['countplot', 'heatmap']
+
+            # Other combinations
+            else:
+                return ['scatterplot']
+
+        # For three features
+        elif len(selected_features) == 3:
+            # At least one numerical and one categorical
+            if 'numerical' in feature_types and 'categorical' in feature_types:
+                return ['scatterplot_with_hue', 'lineplot_with_hue']
+
+            # All numerical
+            elif all(ft == 'numerical' for ft in feature_types):
+                return ['pairplot', 'scatterplot_with_hue']
+
+            # Other combinations
+            else:
+                return ['scatterplot_with_hue']
+
+        return []
+
+    def select_plot_type(plot_types):
+        """Allow user to select a plot type from available options."""
+        print('\nAvailable plot types for the selected features:')
+        for idx, plot_type in enumerate(plot_types, 1):
+            print(f'{idx}. {plot_type}')
+
+        while True:
+            try:
+                selection = input('\nSelect plot type (enter number): ')
+                idx = int(selection) - 1
+
+                if 0 <= idx < len(plot_types):
+                    return plot_types[idx]
+                else:
+                    print(f'Please enter a number between 1 and {len(plot_types)}.')
+
+            except ValueError:
+                print('Please enter a valid number.')
+
+    def select_hue_feature(selected_features):
+        """Allow user to select which feature to use for color differentiation."""
+        print('\nFor this plot type, one feature must be used for color differentiation (hue).')
+        print('Which feature would you like to use for hue?')
+
+        for idx, (feature, feature_type) in enumerate(selected_features, 1):
+            print(f'{idx}. {feature} ({feature_type})')
+
+        while True:
+            try:
+                selection = input('\nSelect hue feature (enter number): ')
+                idx = int(selection) - 1
+
+                if 0 <= idx < len(selected_features):
+                    return idx  # Return the index of the selected hue feature
+                else:
+                    print(f'Please enter a number between 1 and {len(selected_features)}.')
+
+            except ValueError:
+                print('Please enter a valid number.')
+
+    def create_plot(selected_features, plot_type):
+        """Create and display the selected plot type."""
+        feature_names = [feature_name for feature_name, _ in selected_features]
+
+        plt.figure(figsize=(12, 8))
+
+        # Handle different plot types
+        if plot_type == 'histogram':
+            sns.histplot(data=df, x=feature_names[0], kde=True)
+            plt.title(f'Histogram of {feature_names[0]}')
+
+        elif plot_type == 'boxplot' and len(feature_names) == 1:
+            sns.boxplot(data=df, y=feature_names[0])
+            plt.title(f'Box Plot of {feature_names[0]}')
+
+        elif plot_type == 'violinplot' and len(feature_names) == 1:
+            sns.violinplot(data=df, y=feature_names[0])
+            plt.title(f'Violin Plot of {feature_names[0]}')
+
+        elif plot_type == 'countplot':
+            sns.countplot(data=df, x=feature_names[0])
+            plt.title(f'Count Plot of {feature_names[0]}')
+            plt.xticks(rotation=45)
+
+        elif plot_type == 'barplot' and len(feature_names) == 1:
+            sns.barplot(data=df, x=feature_names[0])
+            plt.title(f'Bar Plot of {feature_names[0]}')
+            plt.xticks(rotation=45)
+
+        elif plot_type == 'pieplot':
+            value_counts = df[feature_names[0]].value_counts()
+            plt.pie(value_counts, labels=value_counts.index, autopct='%1.1f%%')
+            plt.title(f'Pie Chart of {feature_names[0]}')
+
+        elif plot_type == 'lineplot' and len(feature_names) == 1:
+            sns.lineplot(data=df, x=df.index, y=feature_names[0])
+            plt.title(f'Line Plot of {feature_names[0]}')
+
+        elif plot_type == 'scatterplot' and len(feature_names) == 2:
+            sns.scatterplot(data=df, x=feature_names[0], y=feature_names[1])
+            plt.title(f'Scatter Plot of {feature_names[1]} vs {feature_names[0]}')
+
+        elif plot_type == 'lineplot' and len(feature_names) == 2:
+            sns.lineplot(data=df, x=feature_names[0], y=feature_names[1])
+            plt.title(f'Line Plot of {feature_names[1]} vs {feature_names[0]}')
+
+        elif plot_type == 'heatmap' and len(feature_names) == 2:
+            crosstab = pd.crosstab(df[feature_names[0]], df[feature_names[1]])
+            sns.heatmap(crosstab, annot=True, cmap='YlGnBu', fmt='g')
+            plt.title(f'Heatmap of {feature_names[1]} vs {feature_names[0]}')
+
+        elif plot_type == 'barplot' and len(feature_names) == 2:
+            # Determine which feature is categorical
+            cat_idx = 0 if selected_features[0][1] == 'categorical' else 1
+            num_idx = 1 - cat_idx
+            sns.barplot(data=df, x=feature_names[cat_idx], y=feature_names[num_idx])
+            plt.title(f'Bar Plot of {feature_names[num_idx]} by {feature_names[cat_idx]}')
+            plt.xticks(rotation=45)
+
+        elif plot_type == 'boxplot' and len(feature_names) == 2:
+            # Determine which feature is categorical
+            cat_idx = 0 if selected_features[0][1] == 'categorical' else 1
+            num_idx = 1 - cat_idx
+            sns.boxplot(data=df, x=feature_names[cat_idx], y=feature_names[num_idx])
+            plt.title(f'Box Plot of {feature_names[num_idx]} by {feature_names[cat_idx]}')
+            plt.xticks(rotation=45)
+
+        elif plot_type == 'violinplot' and len(feature_names) == 2:
+            # Determine which feature is categorical
+            cat_idx = 0 if selected_features[0][1] == 'categorical' else 1
+            num_idx = 1 - cat_idx
+            sns.violinplot(data=df, x=feature_names[cat_idx], y=feature_names[num_idx])
+            plt.title(f'Violin Plot of {feature_names[num_idx]} by {feature_names[cat_idx]}')
+            plt.xticks(rotation=45)
+
+        elif 'with_hue' in plot_type and len(feature_names) == 3:
+            # Get hue feature index
+            hue_idx = select_hue_feature(selected_features)
+
+            # Remaining features for x and y
+            non_hue_indices = [i for i in range(3) if i != hue_idx]
+            x_idx, y_idx = non_hue_indices
+
+            if plot_type == 'scatterplot_with_hue':
+                sns.scatterplot(data=df, x=feature_names[x_idx], y=feature_names[y_idx],
+                                hue=feature_names[hue_idx])
+                plt.title(
+                    f'Scatter Plot of {feature_names[y_idx]} vs {feature_names[x_idx]} by {feature_names[hue_idx]}')
+
+            elif plot_type == 'lineplot_with_hue':
+                sns.lineplot(data=df, x=feature_names[x_idx], y=feature_names[y_idx],
+                             hue=feature_names[hue_idx])
+                plt.title(f'Line Plot of {feature_names[y_idx]} vs {feature_names[x_idx]} by {feature_names[hue_idx]}')
+
+        elif plot_type == 'pairplot':
+            # Close current figure first
+            plt.close()
+
+            # Create pairplot (this will generate its own figure)
+            sns.pairplot(df[feature_names], diag_kind='kde')
+            plt.suptitle('Pairplot of Selected Features', y=1.02)
+
+        else:
+            print(f'Plot type {plot_type} not implemented for the selected feature combination.')
+            return False
+
+        plt.tight_layout()
+        plt.show()
+        return True
+
+    # Main plotting loop
+    plotting = True
+    while plotting:
+        # Get features to plot
+        selected_features = select_features_to_plot()
+
+        # Get appropriate plot types
+        plot_types = get_appropriate_plot_types(selected_features)
+
+        if not plot_types:
+            print('No appropriate plot types found for the selected feature combination.')
+            continue
+
+        # Let user select plot type
+        plot_type = select_plot_type(plot_types)
+
+        # Create and display the plot
+        success = create_plot(selected_features, plot_type)
+
+        # Ask if user wants to create another plot
+        if success:
+            another = input('\nWould you like to create another plot? (Y/N): ').lower()
+            plotting = another == 'y'
+
+        else:
+            # If plot creation failed, ask if user wants to try again
+            retry = input('\nWould you like to try with different features or another plot type? (Y/N): ').lower()
+            plotting = retry == 'y'
+
+    print('Plotting complete.')
