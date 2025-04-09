@@ -630,3 +630,15 @@ transform_list = ['age', 'int_10', 'binary', 'zeros', 'nulls']
 # transform_results = tp.transform(transform_df, features_to_transform=None, verbose=False,
 #                                  preserve_features=True, skip_warnings=False)
 # print(transform_results)
+
+'''
+Testing new date-time extraction method
+Need to test for:
+-
+'''
+
+'''
+Testing new runtime plot-making method
+Need to test for:
+-
+'''
