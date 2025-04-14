@@ -868,7 +868,6 @@ machine learning models can use more effectively.
 - `datetime_features` (list[str] | None, default=None) Optional list of datetime features to process.
 - `verbose` (Boolean, default=True) Controls level of detail/guidance in output.
 - `preserve_features` (Boolean, default=False) Controls whether original datetime features are preserved.
-- `components` (list[str] | None, default=None) Optional list of specific datetime components to extract.
 
 ### Returns:
 - Modified dataframe with extracted datetime features. If `preserve_features=True`, original datetime columns are 
@@ -876,84 +875,79 @@ retained.
 
 ### Implementation Plan:
 - **Input Validation**
- - Verify input is a Pandas DataFrame
- - Validate existence of specified datetime features if provided
- - Ensure DataFrame is not empty
+  - Verify input is a Pandas DataFrame
+  - Validate existence of specified datetime features if provided
+  - Ensure DataFrame is not empty
 
 - **Feature Identification**
- - If `datetime_features` is None:
-   - Identify columns with datetime dtype
-   - Attempt to parse string columns as datetime
-   - Allow user to select which columns to process
+  - If `datetime_features` is None:
+    - Identify columns already in datetime format
+    - Attempt to parse string columns as datetime
+    - Add successfully converted columns to datetime features list
 
-- **Component Identification**
- - If `components` is None:
-   - Offer standard components: year, month, day, dayofweek, hour, minute, quarter, weekofyear, dayofyear
-   - For time series data, offer additional components: is_weekend, is_month_start, is_month_end, is_quarter_start, 
- is_quarter_end
-   - Allow user to select which components to extract
-
-- **DateTime Extraction Process**
- - For each selected datetime feature:
-   - Ensure column is in datetime format (convert if needed)
-   - Extract selected components into new columns
-   - Handle timezone information if present
-   - Apply appropriate naming conventions for new columns
-   - Encode cyclical features (like month, day of week) using sin/cos transformation if requested
+- **Component Extraction**
+  - Extract a fixed set of standard components from each datetime column:
+    - year, month, day, dayofweek, hour, minute, quarter, dayofyear
+  - Create new columns with naming pattern '{original_column}_{component}'
+  - Skip components that cannot be extracted due to errors
 
 - **Output Handling**
- - Create new columns with naming pattern '{original_column}_{component}'
- - If `preserve_features=False`:
-   - Remove original datetime columns
- - Return updated DataFrame
-
-- **Time Series Detection**
- - Detect if data appears to be time series based on:
-   - Regular intervals between datetime values
-   - Sorted datetime values
-   - If identified as time series, suggest additional useful features
-   - Offer lagged features or rolling statistics if appropriate
+  - Create new columns with naming pattern '{original_column}_{component}'
+  - If `preserve_features=False`:
+    - Remove original datetime columns
+  - Return updated DataFrame
 
 - **Error Handling**
- - Handle invalid datetime formats
- - Provide informative error messages
- - Offer parsing options for ambiguous formats (MM/DD vs DD/MM)
- - Allow skipping problematic features
+  - Handle invalid datetime formats with errors='coerce'
+  - Log conversion failures
+  - Continue processing even if some components fail to extract
+  - Skip columns that cannot be converted to datetime
 
 - **Reporting**
- - If `verbose=True`:
-   - Summarize extracted components
-   - Show examples of original and extracted values
-   - Provide guidance on using extracted features in models
+  - If `verbose=True`:
+    - Print progress information
+    - Report column conversion results
+    - Show count of created columns
+    - Indicate when original columns are removed
 
 ### Expected Behavior:
 - Core Functionality (Always Run):
- - Identifies datetime columns (explicit datetime types and string-based dates)
- - Extracts selected components into separate columns
- - Maintains data integrity during extraction
- - Applies appropriate naming conventions
- - Creates all specified datetime-derived features
- - Returns modified dataframe with new features
+  - Identifies datetime columns (explicit datetime types and string-based dates)
+  - Extracts fixed set of components into separate columns
+  - Maintains data integrity during extraction
+  - Applies consistent naming conventions
+  - Creates datetime-derived features
+  - Returns modified dataframe with new features
 
 - If `verbose=False`:
- - Shows minimal feature guidance
- - Displays only essential user prompts
- - Provides basic confirmation of successful operations
- - Minimizes explanatory text
+  - Shows minimal information
+  - Displays only essential error messages
+  - Provides minimal confirmation of operations
 
 - If `verbose=True`:
- - Explains datetime feature extraction concepts
- - Provides component selection guidance
- - Shows examples of extracted values
- - Offers visualization of time-based patterns if appropriate
- - Explains cyclical encoding concepts for periodic features
+  - Indicates beginning of process
+  - Reports column detection and conversion details
+  - Shows count of processed columns and created features
+  - Confirms when process is complete
 
 - Parameter `preserve_features`:
- - When `True`, keeps original datetime columns alongside extracted features
- - When `False`, removes original datetime columns after extraction
+  - When `True`, keeps original datetime columns alongside extracted features
+  - When `False`, removes original datetime columns after extraction
+
+### Extracted Components:
+The following components are automatically extracted:
+- year: Year component (e.g., 2023)
+- month: Month component (1-12)
+- day: Day of month (1-31)
+- dayofweek: Day of week (0-6, where 0 is Monday)
+- hour: Hour component (0-23)
+- minute: Minute component (0-59)
+- quarter: Calendar quarter (1-4)
+- dayofyear: Day of year (1-366)
 
 ### Method History:
-- Alpha build by Don Smith (Current State)
+- Alpha build by Don Smith
+- Beta build by Don Smith (Current State)
 
 
 # Method: `build_interactions`
