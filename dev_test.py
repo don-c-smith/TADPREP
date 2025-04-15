@@ -16,7 +16,7 @@ from tadprep.core.transforms import PlotHandler, _build_interactions_core
 
 # FIRST-PASS TESTING
 # Uploading sample datafile
-df_raw = pd.read_csv(r"C:\Users\gabor\Desktop\code\TADPREP\data\sample_data_sparse.csv")
+# df_raw = pd.read_csv(r"C:\Users\gabor\Desktop\code\TADPREP\data\sample_data_sparse.csv")
 
 # Checking import
 # print(df_raw)
@@ -634,9 +634,25 @@ transform_list = ['age', 'int_10', 'binary', 'zeros', 'nulls']
 '''
 Testing new date-time extraction method
 Need to test for:
--
+- Verbose and non-verbose operation
+- Passed list of datetime features
+- Feature preservation
 '''
+# Generate 10 random dates within a specified range
+start_date = datetime.now() - timedelta(days=365*5)
+end_date = datetime.now()
+time_range_seconds = int((end_date - start_date).total_seconds())
 
+# Generate 10 random timestamps within that range
+random_seconds = np.random.randint(0, time_range_seconds + 1, size=10).tolist()
+random_dates = [(start_date + timedelta(seconds=sec)).strftime('%Y-%m-%d %H:%M') for sec in random_seconds]
+
+date_df = pd.DataFrame({
+    'date': random_dates,
+    'river_volume': [101513, 175474, 167819, 130656, 110106, 113368, 109843, 119749, 110872, 196164]
+})
+
+print(date_df)
 '''
 Testing new runtime plot-making method
 Need to test for:
