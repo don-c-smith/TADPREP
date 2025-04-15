@@ -803,7 +803,7 @@ def extract_datetime(
     # Call core implementation, passing datetime_features as dt_feats
     return _extract_datetime_core(
         df,
-        dt_feats=datetime_features,
+        datetime_features=datetime_features,
         verbose=verbose,
         preserve_features=preserve_features)
 
