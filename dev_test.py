@@ -652,7 +652,18 @@ date_df = pd.DataFrame({
     'river_volume': [101513, 175474, 167819, 130656, 110106, 113368, 109843, 119749, 110872, 196164]
 })
 
-print(date_df)
+# print(date_df)  # Print debugging
+
+# First test 'default' settings
+# date_extract_df = tp.extract_datetime(date_df, datetime_features=None, verbose=True, preserve_features=False)
+# Test feature preservation
+# date_extract_df = tp.extract_datetime(date_df, datetime_features=None, verbose=True, preserve_features=True)
+# Test passed feature list
+# date_extract_df = tp.extract_datetime(date_df, datetime_features=['date'], verbose=True, preserve_features=True)
+# Test non-verbose operation
+date_extract_df = tp.extract_datetime(date_df, datetime_features=['date'], verbose=False, preserve_features=True)
+
+print(date_extract_df)
 '''
 Testing new runtime plot-making method
 Need to test for:
