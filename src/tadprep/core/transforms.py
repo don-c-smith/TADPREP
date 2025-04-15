@@ -5028,7 +5028,7 @@ def _extract_datetime_core(
         print('-' * 50)
 
     # Standard datetime components to extract
-    DT_COMPONENTS = ['year', 'month', 'day', 'dayofweek', 'hour', 'minute', 'quarter', 'dayofyear']
+    DT_COMPONENTS = ['year', 'month', 'day', 'day_of_week', 'hour', 'minute', 'quarter', 'day_of_year']
 
     # Track created columns
     extracted_cols = []
@@ -5142,7 +5142,7 @@ def _extract_datetime_core(
                     df[new_col] = df[col].dt.month
                 elif component == 'day':
                     df[new_col] = df[col].dt.day
-                elif component == 'dayofweek':
+                elif component == 'day_of_week':
                     df[new_col] = df[col].dt.dayofweek
                 elif component == 'hour':
                     df[new_col] = df[col].dt.hour
@@ -5150,7 +5150,7 @@ def _extract_datetime_core(
                     df[new_col] = df[col].dt.minute
                 elif component == 'quarter':
                     df[new_col] = df[col].dt.quarter
-                elif component == 'dayofyear':
+                elif component == 'day_of_year':
                     df[new_col] = df[col].dt.dayofyear
 
                 extracted_cols.append(new_col)
