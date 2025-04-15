@@ -5005,7 +5005,7 @@ def _transform_core(
 
 def _extract_datetime_core(
         df: pd.DataFrame,
-        dt_feats: list[str] | None = None,
+        datetime_features: list[str] | None = None,
         verbose: bool = True,
         preserve_features: bool = False
 ) -> pd.DataFrame:
@@ -5014,7 +5014,7 @@ def _extract_datetime_core(
 
     Args:
         df: Input DataFrame containing datetime features.
-        dt_feats: Optional list of datetime features to process. If None, the function will identify datetime
+        datetime_features: Optional list of datetime features to process. If None, the function will identify datetime
         features automatically.
         verbose: Whether to display detailed information about the process.
         preserve_features: Whether to keep the original datetime features in the modified DataFrame.
@@ -5034,7 +5034,7 @@ def _extract_datetime_core(
     extracted_cols = []
 
     # Identify datetime columns
-    if dt_feats is None:
+    if datetime_features is None:
         # Auto-detect datetime columns
         dt_feats = []
 
@@ -5062,7 +5062,7 @@ def _extract_datetime_core(
     else:
         # Validate user-provided columns
         valid_cols = []
-        for col in dt_feats:
+        for col in datetime_features:
             if col not in df.columns:
                 if verbose:
                     print(f'Feature "{col}" was not found in the DataFrame.')
@@ -5091,9 +5091,46 @@ def _extract_datetime_core(
     if verbose:
         print(f'Processing {len(dt_feats)} datetime columns: {", ".join(dt_feats)}')
 
+    # Interactive component selection
+    print('\nAvailable datetime components for extraction:')
+    for i, comp in enumerate(DT_COMPONENTS, 1):
+        print(f'{i}. {comp}')
+
+    # Ask user to select components
+    selected_components = []
+    while True:
+        component_input = input('\nEnter the numbers of components to extract (comma-separated) or enter "all" '
+                                'to extract all components: ')
+
+        if component_input.lower() == 'all':
+            selected_components = DT_COMPONENTS
+            break
+
+        try:
+            # Parse the input
+            indices = [int(idx.strip()) - 1 for idx in component_input.split(',')]
+
+            # Validate indices
+            if not all(0 <= idx < len(DT_COMPONENTS) for idx in indices):
+                print('Invalid component number(s). Please try again.')
+                continue
+
+            # Get selected component names
+            selected_components = [DT_COMPONENTS[idx] for idx in indices]
+
+            if len(selected_components) > 0:
+                break
+            else:
+                print('Please select at least one component.')
+        except ValueError:
+            print('Invalid input. Please enter comma-separated numbers or "all".')
+
+    if verbose:
+        print(f'Selected components for extraction: {', '.join(selected_components)}')
+
     # Process each datetime column
     for col in dt_feats:
-        for component in DT_COMPONENTS:
+        for component in selected_components:
             try:
                 # Create new column name
                 new_col = f'{col}_{component}'
@@ -5117,6 +5154,8 @@ def _extract_datetime_core(
                     df[new_col] = df[col].dt.dayofyear
 
                 extracted_cols.append(new_col)
+                if verbose:
+                    print(f"Created {new_col}")
 
             except (AttributeError, ValueError, TypeError) as exc:
                 print(f'Could not extract {component} from {col}: {str(exc)}')
