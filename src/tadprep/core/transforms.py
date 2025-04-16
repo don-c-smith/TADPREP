@@ -5242,7 +5242,9 @@ def _make_plots_core(df: pd.DataFrame, features_to_plot: list[str] | None = None
 
     def explain_plot_types():
         """Explain available plot types based on feature characteristics."""
-        print('\nAvailable Plot Types:')
+        print('-' * 50)
+        print('Available Plot Types:')
+        print('-' * 50)
         print('\nFor Numerical Features:')
         print('- Histogram: Shows the distribution of a single numerical feature')
         print('- Box Plot: Shows quartiles, median, and outliers of a numerical feature')
