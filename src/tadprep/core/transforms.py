@@ -5246,14 +5246,14 @@ def _make_plots_core(df: pd.DataFrame, features_to_plot: list[str] | None = None
         print('Available Plot Types:')
         print('-' * 50)
         print('\nFor Numerical Features:')
-        print('- Histogram: Shows the distribution of a single numerical feature')
-        print('- Box Plot: Shows quartiles, median, and outliers of a numerical feature')
-        print('- Violin Plot: Similar to box plot but shows density estimate')
-        print('- Scatter Plot: Shows relationship between two numerical features')
+        print('- Histogram: Shows the overall distribution of a numerical feature')
+        print('- Box Plot: Shows the quartiles, median, and outliers of a numerical feature')
+        print('- Violin Plot: Similar to a box plot, but also shows density estimates')
+        print('- Scatter Plot: Shows the relationship between two numerical features')
 
         print('\nFor Categorical Features:')
-        print('- Bar Plot: Shows counts or frequencies of categories')
-        print('- Count Plot: Shows counts for each category')
+        print('- Bar Plot: Summarizes a numeric variable at the level of each category')
+        print('- Count Plot: Shows count of occurrences for each category (pure frequencies)')
         print('- Pie Chart: Shows proportion of each category as a slice of a circle')
 
         print('\nFor Datetime Features:')
@@ -5261,10 +5261,10 @@ def _make_plots_core(df: pd.DataFrame, features_to_plot: list[str] | None = None
         print('- Time Series: Shows values against datetime indices')
 
         print('\nFor Mixed Feature Types:')
-        print('- Bar Plot: Numerical values grouped by categories')
-        print('- Box Plot: Distribution of numerical values across categories')
-        print('- Violin Plot: Distribution and density across categories')
-        print('- Scatter Plot with Hue: Points colored by a categorical variable')
+        print('- Bar Plot: Useful when summarizing a numeric variable grouped by a categorical feature')
+        print('- Box Plot: Shows distribution of a numeric variable across categories')
+        print('- Violin Plot: Shows distribution and density of a numeric variable across categories')
+        print('- Scatter Plot with Hue: Numeric x and y, with categorical variable mapped to color')
 
     # Offer explanation
     user_explain = input('Would you like to see an explanation of available plot types? (Y/N): ').lower()
