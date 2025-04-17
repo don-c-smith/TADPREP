@@ -670,10 +670,10 @@ Need to test for:
 - Passed list of plottable features
 '''
 # Import new generated sample data
-df_plot = pd.read_csv(r'C:\Users\doncs\Documents\GitHub\TADPREP\data\river_data.csv')
+# df_plot = pd.read_csv(r'C:\Users\doncs\Documents\GitHub\TADPREP\data\river_data.csv')
 # Print check
 # print(df_plot)
 # Testing without list of features first
-tp.make_plots(df_plot)
-
-# TODO: Write better plot descriptions
+# tp.make_plots(df_plot)
+# Testing with list of features
+# tp.make_plots(df_plot, features_to_plot=['date', 'volume'])
