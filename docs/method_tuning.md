@@ -1071,3 +1071,97 @@ capture non-linear relationships and interactions between variables.
 
 ### Method History:
 - Proposed by Don Smith (Current State)
+
+# Method: `make_plots`
+
+### Core Purpose:
+Extracts useful features from datetime columns in a dataframe, converting temporal information into features that machine learning models can use more effectively.
+
+### Parameters:
+- `df` Input Pandas dataframe.
+- `features_to_plot` (list[str] | None, default=None) Optional list of features to visualize. If None, the function guides users through feature selection interactively.
+- `verbose` (Boolean, default=True) Controls level of detail/guidance in output.
+
+### Returns:
+- None. This function produces visualizations but does not return any values.
+
+### Implementation Plan:
+- **Input Validation**
+  - Verify input is a Pandas DataFrame
+  - Validate existence of specified features if provided
+  - Ensure DataFrame is not empty
+
+- **Feature Type Detection**
+  - Identify numerical features (continuous and discrete)
+  - Identify categorical features (object and categorical dtypes)
+  - Identify datetime features
+  - Attempt to convert string columns to datetime if they appear to contain dates
+  - Filter features based on user selection if provided
+
+- **Interactive Feature Selection**
+  - Display available features with their detected types
+  - Guide users through selecting up to three features
+  - Recommend appropriate feature combinations based on visualization needs
+
+- **Plot Type Determination**
+  - Suggest appropriate visualization types based on:
+    - Number of selected features (one, two, or three)
+    - Data types of selected features (numerical, categorical, datetime)
+    - Distribution characteristics of numerical features
+  - Present plot options to user with explanations of each type's purpose
+
+- **Visualization Creation**
+  - Generate appropriate plot using matplotlib and seaborn
+  - Format plot with clear titles, labels, and appropriate scales
+  - Apply color palettes suited to the data characteristics
+  - Handle different feature combinations with specialized visualizations
+
+- **Plot Sequence Management**
+  - Allow users to create multiple visualizations in sequence
+  - Offer to create additional plots after each visualization
+  - Enable users to explore different feature combinations and plot types
+
+- **Error Handling**
+  - Gracefully handle invalid feature selections
+  - Manage plotting failures with informative error messages
+  - Suggest alternatives when selected visualization is inappropriate
+  - Ensure all plots are properly closed to prevent resource leaks
+
+### Expected Behavior:
+- Core Functionality (Always Run):
+  - Identifies feature types to suggest appropriate visualizations
+  - Supports both single and multi-feature plots
+  - Applies appropriate visualization techniques based on data characteristics
+  - Handles interaction with users for feature and plot selection
+  - Creates well-formatted, informative visualizations
+
+- If `verbose=True`:
+  - Provides detailed explanations of available plot types
+  - Offers guidance on choosing appropriate visualizations
+  - Explains the purpose of each visualization type
+  - Shows comprehensive information about detected feature types
+
+- If `verbose=False`:
+  - Shows minimal guidance and information
+  - Focuses on efficient plot creation with fewer explanatory messages
+  - Streamlines the selection process
+
+### Supported Visualization Types:
+- **Single Feature**
+  - Numerical: histograms, box plots, violin plots
+  - Categorical: count plots, bar plots, pie charts
+  - Datetime: line plots, time series plots
+
+- **Two Features**
+  - Numerical vs. Numerical: scatter plots, line plots, heat maps
+  - Numerical vs. Categorical: bar plots, box plots, violin plots
+  - Numerical vs. Datetime: line plots, scatter plots
+  - Categorical vs. Categorical: heat maps, count plots
+
+- **Three Features**
+  - Two Numerical with Categorical Hue: scatter plots with color grouping
+  - Numerical and Datetime with Categorical Hue: line plots with color grouping
+  - All Numerical: pair plots with density plots on diagonal
+
+### Method History:
+- Alpha build by Don Smith (Current State)
