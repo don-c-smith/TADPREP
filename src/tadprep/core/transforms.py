@@ -5225,14 +5225,8 @@ def _make_plots_core(df: pd.DataFrame, features_to_plot: list[str] | None = None
                 sample = df[col].dropna().head()
                 if not sample.empty:
                     # Try common date formats first
-                    common_fmts = [
-                        '%Y-%m-%d',  # 2023-01-31
-                        '%m/%d/%Y',  # 01/31/2023
-                        '%d/%m/%Y',  # 31/01/2023
-                        '%Y-%m-%d %H:%M:%S',  # 2023-01-31 14:30:45
-                        '%m/%d/%Y %H:%M:%S',  # 01/31/2023 14:30:45
-                        '%d/%m/%Y %H:%M:%S'  # 31/01/2023 14:30:45
-                    ]
+                    common_fmts = ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y-%m-%d %H:%M:%S',
+                                   '%m/%d/%Y %H:%M:%S', '%d/%m/%Y %H:%M:%S']
 
                     converted = False
                     for fmt in common_fmts:
@@ -5242,13 +5236,13 @@ def _make_plots_core(df: pd.DataFrame, features_to_plot: list[str] | None = None
                             if result.notna().any():
                                 datetime_cols.append(col)
                                 cat_cols.remove(col)
-                                print(f'Column "{col}" contains datetime-like values and will be treated as datetime.')
+                                print(f'"{col}" contains datetime-like values and will be treated as datetime.')
                                 converted = True
                                 break
                         except ValueError:
                             continue
 
-                    # If none of the specific formats worked, try the generic parser as a fallback
+                    # If none of the specific formats worked, we try the generic parser as a fallback
                     if not converted:
                         # Suppress the warning with a context manager
                         import warnings
@@ -5258,7 +5252,7 @@ def _make_plots_core(df: pd.DataFrame, features_to_plot: list[str] | None = None
                             if result.notna().any():
                                 datetime_cols.append(col)
                                 cat_cols.remove(col)
-                                print(f'Column "{col}" contains datetime-like values and will be treated as datetime.')
+                                print(f'"{col}" contains datetime-like values and will be treated as datetime.')
 
             except (ValueError, TypeError):
                 pass
