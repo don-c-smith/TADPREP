@@ -5284,7 +5284,10 @@ def _make_plots_core(df: pd.DataFrame, features_to_plot: list[str] | None = None
                 all_features.append((col, 'datetime'))
 
         # Display features to user
-        print('\nAvailable features:')
+        print()
+        print('-' * 50)
+        print('Features available for plotting:')
+        print('-' * 50)
         for idx, (col, col_type) in enumerate(all_features, 1):
             print(f'{idx}. {col} ({col_type})')
 
