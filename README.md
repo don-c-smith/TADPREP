@@ -307,6 +307,18 @@ max_features=None)`
 - Set `verbose=False` for minimal process output
 - Set `preserve_features=False` to remove original features after interaction creation
 
+`make_plots(df, features_to_plot=None)`
+- Creates visualizations for DataFrame features with an interactive approach
+- Automatically identifies feature types and suggests appropriate visualizations
+- Supports single-feature plots (histograms, box plots, bar charts, pie charts)
+- Supports multi-feature plots (scatter plots, line plots, heat maps)
+- Handles mixed feature types intelligently (numerical, categorical, datetime)
+- Provides guidance about plot types and their appropriate use cases
+- Allows color differentiation (hue) for categorical variables
+- Set `features_to_plot` to specify which columns to visualize
+- Maximum of 3 features can be selected for a single visualization
+- Users can create multiple plots in sequence during a single call to the method
+
 #### Notes on Method Usage
 
 - All methods include interactive prompts to guide users through the preparation process
