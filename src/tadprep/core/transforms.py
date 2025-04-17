@@ -5223,10 +5223,43 @@ def _make_plots_core(df: pd.DataFrame, features_to_plot: list[str] | None = None
             try:
                 # Test conversion on first few non-null values
                 sample = df[col].dropna().head()
-                if not sample.empty and pd.to_datetime(sample, errors='coerce').notna().any():
-                    datetime_cols.append(col)
-                    cat_cols.remove(col)
-                    print(f'Column "{col}" contains datetime-like values and will be treated as datetime.')
+                if not sample.empty:
+                    # Try common date formats first
+                    common_fmts = [
+                        '%Y-%m-%d',  # 2023-01-31
+                        '%m/%d/%Y',  # 01/31/2023
+                        '%d/%m/%Y',  # 31/01/2023
+                        '%Y-%m-%d %H:%M:%S',  # 2023-01-31 14:30:45
+                        '%m/%d/%Y %H:%M:%S',  # 01/31/2023 14:30:45
+                        '%d/%m/%Y %H:%M:%S'  # 31/01/2023 14:30:45
+                    ]
+
+                    converted = False
+                    for fmt in common_fmts:
+                        try:
+                            # Try the specific format
+                            result = pd.to_datetime(sample, format=fmt, errors='coerce')
+                            if result.notna().any():
+                                datetime_cols.append(col)
+                                cat_cols.remove(col)
+                                print(f'Column "{col}" contains datetime-like values and will be treated as datetime.')
+                                converted = True
+                                break
+                        except ValueError:
+                            continue
+
+                    # If none of the specific formats worked, try the generic parser as a fallback
+                    if not converted:
+                        # Suppress the warning with a context manager
+                        import warnings
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore")
+                            result = pd.to_datetime(sample, errors='coerce')
+                            if result.notna().any():
+                                datetime_cols.append(col)
+                                cat_cols.remove(col)
+                                print(f'Column "{col}" contains datetime-like values and will be treated as datetime.')
+
             except (ValueError, TypeError):
                 pass
 
