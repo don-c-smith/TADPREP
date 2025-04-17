@@ -5267,7 +5267,7 @@ def _make_plots_core(df: pd.DataFrame, features_to_plot: list[str] | None = None
         cat_cols = filtered_cat_cols
         datetime_cols = filtered_datetime_cols
 
-    def explain_plot_types():
+    def explain_plots():
         """Explain available plot types based on feature characteristics."""
         print('-' * 50)
         print('Available Plot Types:')
@@ -5296,9 +5296,9 @@ def _make_plots_core(df: pd.DataFrame, features_to_plot: list[str] | None = None
     # Offer explanation
     user_explain = input('Would you like to see an explanation of available plot types? (Y/N): ').lower()
     if user_explain == 'y':
-        explain_plot_types()
+        explain_plots()
 
-    def select_features_to_plot():
+    def select_features():
         """Allow user to select features to plot."""
         # Create a comprehensive list of features with types
         all_features = []
@@ -5418,7 +5418,7 @@ def _make_plots_core(df: pd.DataFrame, features_to_plot: list[str] | None = None
             except ValueError:
                 print('Please enter a valid number.')
 
-    def select_hue_feature(selected_features):
+    def select_hue(selected_features):
         """Allow user to select which feature to use for color differentiation."""
         print('\nFor this plot type, one feature must be used for color differentiation (hue).')
         print('Which feature would you like to use for hue?')
@@ -5516,7 +5516,7 @@ def _make_plots_core(df: pd.DataFrame, features_to_plot: list[str] | None = None
 
         elif 'with_hue' in plot_type and len(feature_names) == 3:
             # Get hue feature index
-            hue_idx = select_hue_feature(selected_features)
+            hue_idx = select_hue(selected_features)
 
             # Remaining features for x and y
             non_hue_indices = [i for i in range(3) if i != hue_idx]
@@ -5550,10 +5550,9 @@ def _make_plots_core(df: pd.DataFrame, features_to_plot: list[str] | None = None
         return True
 
     # Main plotting loop
-    plotting = True
-    while plotting:
+    while True:
         # Get features to plot
-        selected_features = select_features_to_plot()
+        selected_features = select_features()
 
         # Get appropriate plot types
         plot_types = get_appropriate_plot_types(selected_features)
@@ -5568,14 +5567,13 @@ def _make_plots_core(df: pd.DataFrame, features_to_plot: list[str] | None = None
         # Create and display the plot
         success = create_plot(selected_features, plot_type)
 
-        # Ask if user wants to create another plot
+        # Ask if user wants to continue plotting with appropriate context
         if success:
-            another = input('\nWould you like to create another plot? (Y/N): ').lower()
-            plotting = another == 'y'
+            if input('\nWould you like to create another plot? (Y/N): ').lower() != 'y':
+                break
 
         else:
-            # If plot creation failed, ask if user wants to try again
-            retry = input('\nWould you like to try with different features or another plot type? (Y/N): ').lower()
-            plotting = retry == 'y'
+            if input('\nWould you like to try with different features or another plot type? (Y/N): ').lower() != 'y':
+                break
 
     print('Plotting complete.')
