@@ -13,7 +13,6 @@ from .transforms import (
     _impute_core,
     _encode_core,
     _scale_core,
-    _prep_df_core,
     _transform_core,
     _extract_datetime_core,
     _make_plots_core
@@ -32,7 +31,6 @@ __all__ = [
     '_impute_core',
     '_encode_core',
     '_scale_core',
-    '_prep_df_core',
     '_transform_core',
     '_extract_datetime_core',
     '_make_plots_core'
