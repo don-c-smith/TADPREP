@@ -12,7 +12,6 @@ from .package import (
     impute,
     encode,
     scale,
-    prep_df,
     transform,
     extract_datetime,
     make_plots
@@ -30,7 +29,6 @@ __all__ = [
     'impute',
     'encode',
     'scale',
-    'prep_df',
     'transform',
     'extract_datetime',
     'make_plots'
