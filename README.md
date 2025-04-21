@@ -123,17 +123,6 @@ model = LinearRegression()
 model.fit(X, y)
 ```
 
-**A Note on the `prep_df` Method:**
-
-The `prep_df` method essentially runs the same interactive data mutation pipeline as the CLI script, but it does not
-include the steps pertaining to the file I/O process. If the user wants to perform all of the data mutation steps
-present in the full CLI script, but wants to stay within their IDE and use data objects they have already loaded, this
-method will allow them to do so. 
-
-This method *does* offer users the option to select which of the core 
-data-processing steps will be performed, but it offers the methods to the user in strict sequential order. This method
-is therefore lower-effort, but less flexible.
-
 ### Full Library Method List
 
 TADPREP provides a suite of interactive methods for data preparation, each focused on a specific aspect of the 
