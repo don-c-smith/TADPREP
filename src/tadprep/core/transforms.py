@@ -4728,7 +4728,7 @@ def _extract_datetime_core(
             except (AttributeError, ValueError, TypeError) as exc:
                 print(f'Could not extract {component} from {col}: {str(exc)}')
 
-    # Remove original datetime columns if not preserving
+    # Remove original datetime columns if not preserving features
     if not preserve_features:
         df = df.drop(columns=dt_feats)
         if verbose:
