@@ -12,6 +12,7 @@ from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
 from scipy import stats
 
 
+# DATAFRAME-LEVEL INFORMATION AND MANIPULATIONS
 def _df_info_core(df: pd.DataFrame, verbose: bool = True) -> None:
     """
     Core function to print general top-level information about the full, unaltered datafile for the user.
@@ -86,6 +87,205 @@ def _df_info_core(df: pd.DataFrame, verbose: bool = True) -> None:
         print('-' * 50)  # Visual separator
         print(df.info(verbose=True, memory_usage=True, show_counts=True))
         print('-' * 50)  # Visual separator
+
+
+def _reshape_core(
+        df: pd.DataFrame,
+        features_to_reshape: list[str] | None = None,
+        verbose: bool = True
+) -> pd.DataFrame:
+    """
+    Core function for reshaping a DataFrame by identifying missing values and dropping rows and columns.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame to reshape.
+        features_to_reshape (list[str]): User-provided list of features to constrain TADPREP behavior.
+        verbose (bool): Whether to print detailed information about operations. Defaults to True.
+
+    Returns:
+        pd.DataFrame: Reshaped DataFrame
+
+    Raises:
+        ValueError: If invalid indices are provided for column dropping
+        ValueError: If an invalid subsetting proportion is provided
+    """
+    if verbose:
+        print('-' * 50)  # Visual separator
+        print(f'Beginning data reshape process. \nInput data of {df.shape[0]} instances x {df.shape[1]} features.')
+        print('-' * 50)  # Visual separator
+
+    ## Helper func to identify current level of row-based missingness by threshold
+    # Default threshold is 25% "real" values
+    def rows_missing_by_thresh(df: pd.Dataframe, threshold: float = 0.25) -> int:
+        """
+        Helper function to determine missingness of data by row for a given percentage threshold.
+
+        Args:
+            df (pd.Dataframe): Input DataFrame in process of 'reshape'.
+            threshold (float): Populated data threshold. Defaults to 0.25.
+
+        Returns:
+            int: Count of instances in 'df' with 'threshold' or less populated data.
+
+        Raises:
+            ...
+        """
+        # Determine how many NA's at each row and encode by threshold if
+        sum_by_missing = df.isna().sum(axis=1).tolist()
+        encode_by_thresh = [1 if ((df.shape[1] - row_cnt) / df.shape[1]) <= (threshold)
+                            else 0
+                            for row_cnt in sum_by_missing]
+        # Sum count of rows that meet threshold
+        row_missing_cnt = sum(encode_by_thresh)
+
+        return row_missing_cnt
+
+    def recommend_thresholds(df: pd.DataFrame) -> list:
+        """
+        Helper function generates recommended degree-of-population thresholds based on size of user data.
+
+        Args:
+            df (pd.DataFrame): Input DataFrame in process of 'reshape'.
+
+        Returns:
+            list: Array of recommended degree-of-population thresholds.
+        """
+        print('Degree-of-population thresholds adjust based on # of Features in DataFrame.')
+        print('Consider custom thresholds based on your understanding of data requirements.')
+
+        feature_cnt = df.shape[1]
+
+        if feature_cnt <= 5:
+            print(f'\nFeature space is {feature_cnt}: Evaluated as "very small".')
+
+            print(f'Recommend very high thresholds\n{[]}')
+
+        ##  if feature_cnt
+
+    ## Helper func to identify rows with pre-defined column values missing
+    def rows_missing_by_feature(df: pd.DataFrame, features_to_reshape: list[str]) -> dict:
+        """
+        Helper function generates counts of missingness by features in 'features_to_reshape'
+
+        Args:
+            df (pd.DataFrame): Input DataFrame in process of 'reshape'.
+            features_to_reshape (list[str]): User-provided list of features to constrain TADPREP behavior.
+
+        Returns:
+            missing_cnt_by_feature (dict): Keyed by feature, Val count of missing per-key
+        """
+        # Straighforward dict comprehension to store 'features_to_reshape' and corresponding
+        # missingness counts as key:val pairs
+        missing_cnt_by_feature = {feature: df[feature].isna().sum() for feature in features_to_reshape}
+
+        # Pandas-native approach to counting rows missing ALL 'features_to_reshape'
+        missing_all_feature_cnt = df[features_to_reshape].isna().all().sum()
+
+        # Add count of rows missing ALL 'features_to_reshape'
+        missing_cnt_by_feature['ALL'] = missing_all_feature_cnt
+
+        return missing_cnt_by_feature
+
+    ## Core Operation 1
+    def row_based_row_remove(df: pd.DataFrame, threshold: float | None) -> pd.DataFrame:
+        """
+        Function to perform row-based row removal from input DataFrame.
+
+        Args:
+            df (pd.DataFrame): Input DataFrame in process of 'reshape'.
+            threshold (float | None): Decimal percent degree-of-population threshold to apply to row removal process.
+
+        Returns:
+            df (pd.DataFrame): DataFrame in process of 'reshape' with rows removed by degree-of-population threshold.
+        """
+
+        # Here we rework the threshold by rounding for communication and df.dropna(thresh=)
+        final_thresh = int(round(df.shape[1] * threshold))
+
+        # rows_missing_by_thresh defaults to 25%
+        print(
+            f'Identified {rows_missing_by_thresh(df, threshold)} instances with {(threshold * 100):.2f}% or less populated data.')
+        print(f'Rounding {(threshold * 100):.2f}% threshold to {final_thresh} features out of {df.shape[1]}.')
+
+        # User confirmation to drop instances with fewer than 'final_tresh' populated features
+        while True:
+            proceed = input(f'Drop all instances with {final_thresh} or fewer populated features? (Y/N): ')
+
+            if proceed.lower() == 'y':
+                print('Dropping\n')
+                df.dropna(thresh=final_thresh, inplace=True)
+
+            elif proceed.lower() == 'n':
+                print('Aborting drop operation. Input DataFrame not modified.\n')
+                break
+
+            else:
+                print('Invalid input, please enter "Y" or "N.\n')
+                continue
+
+        return df
+
+    ## Core Operation 2
+    def column_based_row_remove(df: pd.DataFrame, features_to_reshape: list[str]) -> pd.DataFrame:
+        """
+        Function to perform column-based row removal from input DataFrame.
+
+        Args:
+            df (pd.DataFrame): Input DataFrame in process of 'reshape'.
+            features_to_reshape (list[str]): DataFrame columns by which to apply row removal process.
+
+        Returns:
+            df (pd.DataFrame): DataFrame in process of 'reshape' with rows removed by column-missingness.
+        """
+
+        ## This build assumes that input arg 'features_to_reshape' will be the way user provides
+        ## what features they wish to analyze and drop by.
+        ## It is also the way this func determines relevant missingness
+
+        # Create dict of missings-by-feature
+        missing_cnt_by_feature = rows_missing_by_feature(df, features_to_reshape)
+
+        print('Counts of instances missing by feature:')
+        for pair in sorted(missing_cnt_by_feature.items()):
+            print(pair)
+
+        # User confirmation to drop instances missingness in 'features_to_reshape'
+        while True:
+            proceed = input(f'Drop all instances with missing values in {features_to_reshape} ? (Y/N): ')
+
+            if proceed.lower() == 'y':
+                print('Dropping\n')
+                df.dropna(subset=features_to_reshape, inplace=True)
+
+            elif proceed.lower() == 'n':
+                print('Aborting drop operation. Input DataFrame not modified.\n')
+                break
+
+            else:
+                print('Invalid input, please enter "Y" or "N.\n')
+                continue
+
+        return df
+
+    ## Core Operation 3
+    def drop_columns(df: pd.DataFrame, features_to_reshape: list[str]) -> pd.DataFrame:
+
+        ## This theoretically could be just a pandas wrapper.
+        ## Check with Don about how it might integrate with UX ideas.
+
+        # Drop columns in 'features_to_reshape'
+        input = input(f'Drop columns {features_to_reshape}? (Y/N): ')
+        if input.lower() == 'y':
+            print('Dropping columns\n')
+            df.drop(columns=features_to_reshape, inplace=True)
+        elif input.lower() == 'n':
+            print('Aborting column drop operation. Input DataFrame not modified.\n')
+        else:
+            print('Invalid input, please enter "Y" or "N.\n')
+
+        return df
+
+    return df
 
 
 def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
@@ -511,6 +711,7 @@ def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     return df  # Return modified dataframe
 
 
+# EXPLORATORY DATA ANALYSIS (EDA)
 def _find_outliers_core(df: pd.DataFrame, method: str = 'iqr', threshold: float = None,
                         verbose: bool = True) -> dict:
     """
@@ -983,6 +1184,413 @@ def _find_corrs_core(df: pd.DataFrame, method: str = 'pearson', threshold: float
     return results
 
 
+def _make_plots_core(df: pd.DataFrame, features_to_plot: list[str] | None = None) -> None:
+    """
+    Core function to create and display plots for specified features in a DataFrame.
+
+    Interactively guides users through selecting features and plot types based on
+    the data characteristics of each feature. Supports plotting of numerical, categorical,
+    and datetime features using appropriate visualization methods.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame containing features to plot.
+        features_to_plot (list[str] | None, default=None): Optional list of features to plot.
+            If None, the function will help identify and select features.
+
+    Returns:
+        None. This function produces plots but does not return any values.
+    """
+    # Validate features_to_plot if provided
+    if features_to_plot is not None:
+        missing_cols = [col for col in features_to_plot if col not in df.columns]
+        if missing_cols:
+            print(f'Features not found in DataFrame: {missing_cols}')
+            print('These features will be ignored.')
+            features_to_plot = [col for col in features_to_plot if col in df.columns]
+
+        if not features_to_plot:  # If all provided features were invalid
+            print('No valid features to plot. Using all available features.')
+            features_to_plot = None
+
+    # Identify feature types
+    num_cols = []
+    cat_cols = []
+    datetime_cols = []
+
+    for col in df.columns:
+        # Check for datetime features
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            datetime_cols.append(col)
+        # Check for string/categorical features
+        elif pd.api.types.is_object_dtype(df[col]) or isinstance(df[col].dtype, pd.CategoricalDtype):
+            cat_cols.append(col)
+        # Check for numerical features
+        elif pd.api.types.is_numeric_dtype(df[col]):
+            num_cols.append(col)
+
+    # Try to convert string columns to datetime if they look like dates
+    for col in cat_cols[:]:  # Use a copy to iterate
+        if col not in datetime_cols:
+            try:
+                # Test conversion on first few non-null values
+                sample = df[col].dropna().head()
+                if not sample.empty:
+                    # Try common date formats first
+                    common_fmts = ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y-%m-%d %H:%M:%S',
+                                   '%m/%d/%Y %H:%M:%S', '%d/%m/%Y %H:%M:%S']
+
+                    converted = False
+                    for fmt in common_fmts:
+                        try:
+                            # Try the specific format
+                            result = pd.to_datetime(sample, format=fmt, errors='coerce')
+                            if result.notna().any():
+                                datetime_cols.append(col)
+                                cat_cols.remove(col)
+                                print(f'"{col}" contains datetime-like values and will be treated as datetime.')
+                                converted = True
+                                break
+                        except ValueError:
+                            continue
+
+                    # If none of the specific formats worked, we try the generic parser as a fallback
+                    if not converted:
+                        # Suppress the warning with a context manager
+                        import warnings
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore")
+                            result = pd.to_datetime(sample, errors='coerce')
+                            if result.notna().any():
+                                datetime_cols.append(col)
+                                cat_cols.remove(col)
+                                print(f'"{col}" contains datetime-like values and will be treated as datetime.')
+
+            except (ValueError, TypeError):
+                pass
+
+    # If specific features were requested, filter them by type
+    if features_to_plot is not None:
+        filtered_num_cols = [col for col in num_cols if col in features_to_plot]
+        filtered_cat_cols = [col for col in cat_cols if col in features_to_plot]
+        filtered_datetime_cols = [col for col in datetime_cols if col in features_to_plot]
+
+        num_cols = filtered_num_cols
+        cat_cols = filtered_cat_cols
+        datetime_cols = filtered_datetime_cols
+
+    def explain_plots():
+        """Explain available plot types based on feature characteristics."""
+        print('-' * 50)
+        print('Available Plot Types:')
+        print('-' * 50)
+        print('\nFor Numerical Features:')
+        print('- Histogram: Shows the overall distribution of a numerical feature')
+        print('- Box Plot: Shows the quartiles, median, and outliers of a numerical feature')
+        print('- Violin Plot: Similar to a box plot, but also shows density estimates')
+        print('- Scatter Plot: Shows the relationship between two numerical features')
+
+        print('\nFor Categorical Features:')
+        print('- Bar Plot: Summarizes a numeric variable at the level of each category')
+        print('- Count Plot: Shows count of occurrences for each category (pure frequencies)')
+        print('- Pie Chart: Shows proportion of each category as a slice of a circle')
+
+        print('\nFor Datetime Features:')
+        print('- Line Plot: Shows trends over time')
+        print('- Time Series: Shows values against datetime indices')
+
+        print('\nFor Mixed Feature Types:')
+        print('- Bar Plot: Useful when summarizing a numeric variable grouped by a categorical feature')
+        print('- Box Plot: Shows distribution of a numeric variable across categories')
+        print('- Violin Plot: Shows distribution and density of a numeric variable across categories')
+        print('- Scatter Plot with Hue: Numeric x and y, with categorical variable mapped to color')
+
+    # Offer explanation
+    user_explain = input('Would you like to see an explanation of available plot types? (Y/N): ').lower()
+    if user_explain == 'y':
+        explain_plots()
+
+    def select_features():
+        """Allow user to select features to plot."""
+        # Create a comprehensive list of features with types
+        all_features = []
+        for col in df.columns:
+            if col in num_cols:
+                all_features.append((col, 'numerical'))
+            elif col in cat_cols:
+                all_features.append((col, 'categorical'))
+            elif col in datetime_cols:
+                all_features.append((col, 'datetime'))
+
+        # Display features to user
+        print()
+        print('-' * 50)
+        print('Features available for plotting:')
+        print('-' * 50)
+        for idx, (col, col_type) in enumerate(all_features, 1):
+            print(f'{idx}. {col} ({col_type})')
+
+        # Get user selections
+        while True:
+            selections = input('\nEnter up to 3 feature numbers (comma-separated) to plot: ')
+            try:
+                indices = [int(idx.strip()) - 1 for idx in selections.split(',')]
+
+                # Validate indices
+                if not all(0 <= idx < len(all_features) for idx in indices):
+                    print('Error: Some feature numbers are out of range.')
+                    continue
+
+                # Check number of selections
+                if len(indices) > 3:
+                    print('Error: You can select at most 3 features.')
+                    continue
+
+                if len(indices) == 0:
+                    print('Error: You must select at least one feature.')
+                    continue
+
+                # Get selected features with their types
+                selected_features = [all_features[idx] for idx in indices]
+                return selected_features
+
+            except ValueError:
+                print('Error: Please enter valid numbers separated by commas.')
+
+    def get_appropriate_plot_types(selected_features):
+        """Determine appropriate plot types based on selected features."""
+        feature_types = [feature_type for _, feature_type in selected_features]
+
+        # For a single feature
+        if len(selected_features) == 1:
+            feature_type = feature_types[0]
+            if feature_type == 'numerical':
+                return ['histogram', 'boxplot', 'violinplot']
+
+            elif feature_type == 'categorical':
+                return ['countplot', 'barplot', 'pieplot']
+
+            elif feature_type == 'datetime':
+                return ['lineplot']
+
+        # For two features
+        elif len(selected_features) == 2:
+            # Two numerical features
+            if all(ft == 'numerical' for ft in feature_types):
+                return ['scatterplot', 'lineplot', 'heatmap']
+
+            # One numerical and one categorical
+            elif 'numerical' in feature_types and 'categorical' in feature_types:
+                return ['barplot', 'boxplot', 'violinplot']
+
+            # One numerical and one datetime
+            elif 'numerical' in feature_types and 'datetime' in feature_types:
+                return ['lineplot', 'scatterplot']
+
+            # Two categorical features
+            elif all(ft == 'categorical' for ft in feature_types):
+                return ['countplot', 'heatmap']
+
+            # Other combinations
+            else:
+                return ['scatterplot']
+
+        # For three features
+        elif len(selected_features) == 3:
+            # At least one numerical and one categorical
+            if 'numerical' in feature_types and 'categorical' in feature_types:
+                return ['scatterplot_with_hue', 'lineplot_with_hue']
+
+            # All numerical
+            elif all(ft == 'numerical' for ft in feature_types):
+                return ['pairplot', 'scatterplot_with_hue']
+
+            # Other combinations
+            else:
+                return ['scatterplot_with_hue']
+
+        return []
+
+    def select_plot_type(plot_types):
+        """Allow user to select a plot type from available options."""
+        print('\nAvailable plot types for the selected features:')
+        for idx, plot_type in enumerate(plot_types, 1):
+            print(f'{idx}. {plot_type}')
+
+        while True:
+            try:
+                selection = input('\nSelect plot type (enter number): ')
+                idx = int(selection) - 1
+
+                if 0 <= idx < len(plot_types):
+                    return plot_types[idx]
+                else:
+                    print(f'Please enter a number between 1 and {len(plot_types)}.')
+
+            except ValueError:
+                print('Please enter a valid number.')
+
+    def select_hue(selected_features):
+        """Allow user to select which feature to use for color differentiation."""
+        print('\nFor this plot type, one feature must be used for color differentiation (hue).')
+        print('Which feature would you like to use for hue?')
+
+        for idx, (feature, feature_type) in enumerate(selected_features, 1):
+            print(f'{idx}. {feature} ({feature_type})')
+
+        while True:
+            try:
+                selection = input('\nSelect hue feature (enter number): ')
+                idx = int(selection) - 1
+
+                if 0 <= idx < len(selected_features):
+                    return idx  # Return the index of the selected hue feature
+                else:
+                    print(f'Please enter a number between 1 and {len(selected_features)}.')
+
+            except ValueError:
+                print('Please enter a valid number.')
+
+    def create_plot(selected_features, plot_type):
+        """Create and display the selected plot type."""
+        feature_names = [feature_name for feature_name, _ in selected_features]
+
+        plt.figure(figsize=(12, 8))
+
+        # Handle different plot types
+        if plot_type == 'histogram':
+            sns.histplot(data=df, x=feature_names[0], kde=True)
+            plt.title(f'Histogram of {feature_names[0]}')
+
+        elif plot_type == 'boxplot' and len(feature_names) == 1:
+            sns.boxplot(data=df, y=feature_names[0])
+            plt.title(f'Box Plot of {feature_names[0]}')
+
+        elif plot_type == 'violinplot' and len(feature_names) == 1:
+            sns.violinplot(data=df, y=feature_names[0])
+            plt.title(f'Violin Plot of {feature_names[0]}')
+
+        elif plot_type == 'countplot':
+            sns.countplot(data=df, x=feature_names[0])
+            plt.title(f'Count Plot of {feature_names[0]}')
+            plt.xticks(rotation=45)
+
+        elif plot_type == 'barplot' and len(feature_names) == 1:
+            sns.barplot(data=df, x=feature_names[0])
+            plt.title(f'Bar Plot of {feature_names[0]}')
+            plt.xticks(rotation=45)
+
+        elif plot_type == 'pieplot':
+            value_counts = df[feature_names[0]].value_counts()
+            plt.pie(value_counts, labels=value_counts.index, autopct='%1.1f%%')
+            plt.title(f'Pie Chart of {feature_names[0]}')
+
+        elif plot_type == 'lineplot' and len(feature_names) == 1:
+            sns.lineplot(data=df, x=df.index, y=feature_names[0])
+            plt.title(f'Line Plot of {feature_names[0]}')
+
+        elif plot_type == 'scatterplot' and len(feature_names) == 2:
+            sns.scatterplot(data=df, x=feature_names[0], y=feature_names[1])
+            plt.title(f'Scatter Plot of {feature_names[1]} vs {feature_names[0]}')
+
+        elif plot_type == 'lineplot' and len(feature_names) == 2:
+            sns.lineplot(data=df, x=feature_names[0], y=feature_names[1])
+            plt.title(f'Line Plot of {feature_names[1]} vs {feature_names[0]}')
+
+        elif plot_type == 'heatmap' and len(feature_names) == 2:
+            crosstab = pd.crosstab(df[feature_names[0]], df[feature_names[1]])
+            sns.heatmap(crosstab, annot=True, cmap='YlGnBu', fmt='g')
+            plt.title(f'Heatmap of {feature_names[1]} vs {feature_names[0]}')
+
+        elif plot_type == 'barplot' and len(feature_names) == 2:
+            # Determine which feature is categorical
+            cat_idx = 0 if selected_features[0][1] == 'categorical' else 1
+            num_idx = 1 - cat_idx
+            sns.barplot(data=df, x=feature_names[cat_idx], y=feature_names[num_idx])
+            plt.title(f'Bar Plot of {feature_names[num_idx]} by {feature_names[cat_idx]}')
+            plt.xticks(rotation=45)
+
+        elif plot_type == 'boxplot' and len(feature_names) == 2:
+            # Determine which feature is categorical
+            cat_idx = 0 if selected_features[0][1] == 'categorical' else 1
+            num_idx = 1 - cat_idx
+            sns.boxplot(data=df, x=feature_names[cat_idx], y=feature_names[num_idx])
+            plt.title(f'Box Plot of {feature_names[num_idx]} by {feature_names[cat_idx]}')
+            plt.xticks(rotation=45)
+
+        elif plot_type == 'violinplot' and len(feature_names) == 2:
+            # Determine which feature is categorical
+            cat_idx = 0 if selected_features[0][1] == 'categorical' else 1
+            num_idx = 1 - cat_idx
+            sns.violinplot(data=df, x=feature_names[cat_idx], y=feature_names[num_idx])
+            plt.title(f'Violin Plot of {feature_names[num_idx]} by {feature_names[cat_idx]}')
+            plt.xticks(rotation=45)
+
+        elif 'with_hue' in plot_type and len(feature_names) == 3:
+            # Get hue feature index
+            hue_idx = select_hue(selected_features)
+
+            # Remaining features for x and y
+            non_hue_indices = [i for i in range(3) if i != hue_idx]
+            x_idx, y_idx = non_hue_indices
+
+            if plot_type == 'scatterplot_with_hue':
+                sns.scatterplot(data=df, x=feature_names[x_idx], y=feature_names[y_idx],
+                                hue=feature_names[hue_idx])
+                plt.title(
+                    f'Scatter Plot of {feature_names[y_idx]} vs {feature_names[x_idx]} by {feature_names[hue_idx]}')
+
+            elif plot_type == 'lineplot_with_hue':
+                sns.lineplot(data=df, x=feature_names[x_idx], y=feature_names[y_idx],
+                             hue=feature_names[hue_idx])
+                plt.title(f'Line Plot of {feature_names[y_idx]} vs {feature_names[x_idx]} by {feature_names[hue_idx]}')
+
+        elif plot_type == 'pairplot':
+            # Close current figure first
+            plt.close()
+
+            # Create pairplot (this will generate its own figure)
+            sns.pairplot(df[feature_names], diag_kind='kde')
+            plt.suptitle('Pairplot of Selected Features', y=1.02)
+
+        else:
+            print(f'Plot type {plot_type} not implemented for the selected feature combination.')
+            return False
+
+        plt.tight_layout()
+        plt.show()
+        return True
+
+    # Main plotting loop
+    while True:
+        # Get features to plot
+        selected_features = select_features()
+
+        # Get appropriate plot types
+        plot_types = get_appropriate_plot_types(selected_features)
+
+        if not plot_types:
+            print('No appropriate plot types found for the selected feature combination.')
+            continue
+
+        # Let user select plot type
+        plot_type = select_plot_type(plot_types)
+
+        # Create and display the plot
+        success = create_plot(selected_features, plot_type)
+
+        # Ask if user wants to continue plotting with appropriate context
+        if success:
+            if input('\nWould you like to create another plot? (Y/N): ').lower() != 'y':
+                break
+
+        else:
+            if input('\nWould you like to try with different features or another plot type? (Y/N): ').lower() != 'y':
+                break
+
+    print('Plotting complete.')
+
+
+# FEATURE-LEVEL INFORMATION AND MANIPULATIONS
 def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: bool = False) -> pd.DataFrame:
     """
     Core function to rename features and to append the '_ord' and/or '_target' suffixes to ordinal or target features,
@@ -3209,882 +3817,6 @@ def _scale_core(
     return df
 
 
-def _reshape_core(
-        df: pd.DataFrame,
-        features_to_reshape: list[str] | None = None,
-        verbose: bool = True
-) -> pd.DataFrame:
-    """
-    Core function for reshaping a DataFrame by identifying missing values and dropping rows and columns.
-
-    Args:
-        df (pd.DataFrame): Input DataFrame to reshape.
-        features_to_reshape (list[str]): User-provided list of features to constrain TADPREP behavior.
-        verbose (bool): Whether to print detailed information about operations. Defaults to True.
-
-    Returns:
-        pd.DataFrame: Reshaped DataFrame
-
-    Raises:
-        ValueError: If invalid indices are provided for column dropping
-        ValueError: If an invalid subsetting proportion is provided
-    """
-    if verbose:
-        print('-' * 50)  # Visual separator
-        print(f'Beginning data reshape process. \nInput data of {df.shape[0]} instances x {df.shape[1]} features.')
-        print('-' * 50)  # Visual separator
-
-    ## Helper func to identify current level of row-based missingness by threshold
-    # Default threshold is 25% "real" values
-    def rows_missing_by_thresh(df: pd.Dataframe, threshold: float = 0.25) -> int:
-        """
-        Helper function to determine missingness of data by row for a given percentage threshold.
-
-        Args:
-            df (pd.Dataframe): Input DataFrame in process of 'reshape'.
-            threshold (float): Populated data threshold. Defaults to 0.25.
-
-        Returns:
-            int: Count of instances in 'df' with 'threshold' or less populated data.
-            
-        Raises:
-            ...
-        """
-        # Determine how many NA's at each row and encode by threshold if 
-        sum_by_missing = df.isna().sum(axis=1).tolist()
-        encode_by_thresh = [1 if ((df.shape[1] - row_cnt) / df.shape[1]) <= (threshold)
-                            else 0
-                            for row_cnt in sum_by_missing]
-        # Sum count of rows that meet threshold
-        row_missing_cnt = sum(encode_by_thresh)
-        
-        return row_missing_cnt
-
-    def recommend_thresholds(df: pd.DataFrame) -> list:
-        """
-        Helper function generates recommended degree-of-population thresholds based on size of user data.
-
-        Args:
-            df (pd.DataFrame): Input DataFrame in process of 'reshape'.
-
-        Returns:
-            list: Array of recommended degree-of-population thresholds.
-        """
-        print('Degree-of-population thresholds adjust based on # of Features in DataFrame.')
-        print('Consider custom thresholds based on your understanding of data requirements.')
-        
-        feature_cnt = df.shape[1]
-        
-        if feature_cnt <= 5:
-            print(f'\nFeature space is {feature_cnt}: Evaluated as "very small".')
-            
-            print(f'Recommend very high thresholds\n{[]}')
-            
-        ##  if feature_cnt  
-
-
-    ## Helper func to identify rows with pre-defined column values missing
-    def rows_missing_by_feature(df: pd.DataFrame, features_to_reshape: list[str]) -> dict:
-        """
-        Helper function generates counts of missingness by features in 'features_to_reshape'
-
-        Args:
-            df (pd.DataFrame): Input DataFrame in process of 'reshape'.
-            features_to_reshape (list[str]): User-provided list of features to constrain TADPREP behavior.
-
-        Returns:
-            missing_cnt_by_feature (dict): Keyed by feature, Val count of missing per-key
-        """
-        # Straighforward dict comprehension to store 'features_to_reshape' and corresponding
-        # missingness counts as key:val pairs
-        missing_cnt_by_feature = {feature: df[feature].isna().sum() for feature in features_to_reshape}
-        
-        # Pandas-native approach to counting rows missing ALL 'features_to_reshape'
-        missing_all_feature_cnt = df[features_to_reshape].isna().all().sum()
-        
-        # Add count of rows missing ALL 'features_to_reshape'
-        missing_cnt_by_feature['ALL'] = missing_all_feature_cnt
-        
-        return missing_cnt_by_feature
-        
-    ## Core Operation 1
-    def row_based_row_remove(df: pd.DataFrame, threshold: float | None) -> pd.DataFrame:
-        """
-        Function to perform row-based row removal from input DataFrame.
-
-        Args:
-            df (pd.DataFrame): Input DataFrame in process of 'reshape'.
-            threshold (float | None): Decimal percent degree-of-population threshold to apply to row removal process.
-
-        Returns:
-            df (pd.DataFrame): DataFrame in process of 'reshape' with rows removed by degree-of-population threshold.
-        """
-        
-        # Here we rework the threshold by rounding for communication and df.dropna(thresh=)
-        final_thresh = int(round(df.shape[1] * threshold))
-        
-        # rows_missing_by_thresh defaults to 25%
-        print(f'Identified {rows_missing_by_thresh(df, threshold)} instances with {(threshold * 100):.2f}% or less populated data.')
-        print(f'Rounding {(threshold * 100):.2f}% threshold to {final_thresh} features out of {df.shape[1]}.')
-        
-        # User confirmation to drop instances with fewer than 'final_tresh' populated features
-        while True:
-            proceed = input(f'Drop all instances with {final_thresh} or fewer populated features? (Y/N): ')
-        
-            if proceed.lower() == 'y':
-                print('Dropping\n')
-                df.dropna(thresh=final_thresh, inplace=True)
-                
-            elif proceed.lower() == 'n':
-                print('Aborting drop operation. Input DataFrame not modified.\n')
-                break
-                
-            else:
-                print('Invalid input, please enter "Y" or "N.\n')
-                continue
-        
-        return df
-    
-    ## Core Operation 2
-    def column_based_row_remove(df: pd.DataFrame, features_to_reshape: list[str]) -> pd.DataFrame:
-        """
-        Function to perform column-based row removal from input DataFrame.
-
-        Args:
-            df (pd.DataFrame): Input DataFrame in process of 'reshape'.
-            features_to_reshape (list[str]): DataFrame columns by which to apply row removal process.
-
-        Returns:
-            df (pd.DataFrame): DataFrame in process of 'reshape' with rows removed by column-missingness.
-        """
-        
-        ## This build assumes that input arg 'features_to_reshape' will be the way user provides
-        ## what features they wish to analyze and drop by.
-        ## It is also the way this func determines relevant missingness
-        
-        # Create dict of missings-by-feature
-        missing_cnt_by_feature = rows_missing_by_feature(df, features_to_reshape)
-        
-        print('Counts of instances missing by feature:')
-        for pair in sorted(missing_cnt_by_feature.items()):
-            print(pair)
-
-        # User confirmation to drop instances missingness in 'features_to_reshape'
-        while True:
-            proceed = input(f'Drop all instances with missing values in {features_to_reshape} ? (Y/N): ')
-        
-            if proceed.lower() == 'y':
-                print('Dropping\n')
-                df.dropna(subset=features_to_reshape, inplace=True)
-                
-            elif proceed.lower() == 'n':
-                print('Aborting drop operation. Input DataFrame not modified.\n')
-                break
-                
-            else:
-                print('Invalid input, please enter "Y" or "N.\n')
-                continue
-        
-        return df
-    
-    ## Core Operation 3
-    def drop_columns(df: pd.DataFrame, features_to_reshape: list[str]) -> pd.DataFrame:
-        
-        ## This theoretically could be just a pandas wrapper.
-        ## Check with Don about how it might integrate with UX ideas.
-
-        # Drop columns in 'features_to_reshape'
-        input = input(f'Drop columns {features_to_reshape}? (Y/N): ')
-        if input.lower() == 'y':
-            print('Dropping columns\n')
-            df.drop(columns=features_to_reshape, inplace=True)
-        elif input.lower() == 'n':
-            print('Aborting column drop operation. Input DataFrame not modified.\n')
-        else:
-            print('Invalid input, please enter "Y" or "N.\n')
-        
-        return df
-    
-    return df
-
-# #-------New OOP-----------------------------------
-
-### Working through this has me thinking that there may be benefits to
-### handling the entire process of TADPREP through OOP, considering the
-### user's DataFrame will exist in a variety of states throughout.
-
-class PlotHandler:
-    def __init__(self, palette: str = 'colorblind'):
-        
-        self.palette = palette
-        sns.set_palette(self.palette)
-
-        # Triple-layer defaultdict() allows for automatic data structuring
-        # when we expect all plots to be stored in the same way
-        self.plot_storage = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-
-        # Basic structure for data snapshot storage
-        # {
-        #     'col_name': {
-        #         'plot_type': {
-        #             'plot_num': [int],
-        #             'data': [pd.Series] (pd.Series will contain indexing info)
-        #         }
-        #     }
-        # } 
-        
-    def det_plot_type(self, data: pd.DataFrame | pd.Series, col_name: str) -> tuple:
-        """
-        Determines an "appropriate" plot type for a set of data (pd.Series)
-        based on the pandas dtype of the user's DataFrame column.
-
-        Args:
-            col_name (str): Specified DataFrame column to determine plotting info for.
-        
-        Raises:
-            ValueError: _description_
-
-        Returns:
-            plot_type (tuple (pd.dtype, str)): A tuple containing dtype and its corresponding "plot type" string (hist/line/etc.).
-        """
-
-        #####################################
-        # This method may not be necessary, but is currently a placeholder method in the case
-        # we decide to separate plot-type determination from method-arg-input.
-        #####################################
-        
-        # Determine if input is pd.DataFrame or pd.Series
-        if isinstance(data, pd.DataFrame):
-            dtype = data[col_name].dtype
-        elif isinstance(data, pd.Series):
-            dtype = data.dtype
-        # Empty str variable, will be re-valued by this method
-        plot_type = ""
-        
-        if pd.api.types.is_numeric_dtype(dtype):
-            plot_type = 'hist'  # Define 'hist' as plot type for numeric data
-            
-        elif pd.api.types.is_categorical_dtype(dtype) or pd.api.types.is_object_dtype(dtype):
-            plot_type = 'box'   # Define 'box' as plot type for numeric data
-            
-        elif pd.api.types.is_datetime64_any_dtype(dtype):
-            # '.is_datetime64_any_dtype' allows for TZ-aware DataFrames
-            plot_type = 'line'  # Define 'line' for time-series data
-            
-        else:
-            plot_type = 'scatter'   # For all other types, assume mixed data and assign 'scatter'
-        
-        return (dtype, plot_type)
-    
-    def plot(self, df: pd.DataFrame, col_name: str, plot_type: str):
-        """
-        Create a specified Seaborn plot for a specified pandas DataFrame column.
-        Copies current data state to PlotHandler class instance self.plot_storage.
-
-        Args:
-            data (pd.DataFrame): DataFrame to reference.
-            col_name (str): Name of DataFrame column for plotting and archiving.
-            plot_type (str): Type of plot to create (hist, box, line, scatter).
-
-        Raises:
-            ValueError: _description_
-        """
-
-        data = df[col_name]
-
-        ### LIKELY UNNECESSARY if giving user control over method arg
-        # # Check dtype of pd.Series for indexing in self.plot_storage
-        # plot_type = self.det_plot_type(data, col_name)[1]
-        
-        # Create 'plot_num' list with first value 1 if not already present
-        if not self.plot_storage[col_name][plot_type]['plot_num']:
-            self.plot_storage[col_name][plot_type]['plot_num'].append(1)
-        # Otherwise, append the next number in the sequence
-        else:
-            self.plot_storage[col_name][plot_type]['plot_num'].append(
-                self.plot_storage[col_name][plot_type]['plot_num'][-1] + 1
-            )
-
-        self.plot_storage[col_name][plot_type]['data'].append(data)
-
-
-        if plot_type == 'hist':
-            plot = sns.histplot(data=data, kde=True)
-            plot.set_title(f"Histogram for '{col_name}'")
-            plt.show()  # Assume viz is desired on creation for now
-        
-            return
-        
-        elif plot_type == 'box':
-            plot = sns.boxplot(data=data)
-            plot.set_title(f"Box Plot for '{col_name}'")
-            plt.show()  # Assume viz is desired on creation for now
-        
-            return
-        
-        elif plot_type == 'line':
-            plot = sns.lineplot(data=data)
-            plot.set_title(f"Line Plot for '{col_name}'")
-            plt.show()  # Assume viz is desired on creation for now
-        
-            return
-        
-        elif plot_type == 'scatter':
-            plot = sns.scatterplot(data=data)
-            plot.set_title(f"Scatter Plot for '{col_name}'")
-            plt.show()  # Assume viz is desired on creation for now
-            
-            return
-        
-        else:
-            print(f'Unsupported plot type: {plot_type}')
-            return
-    
-    def recall_plot(self, col_name: str, plot_type: str):
-        """
-        Recall a previously-created stored plot for a given dtype and DataFrame column.
-
-        Args:
-            dtype (_type_): dtype to be fetched from defaultdict.
-            col_name (str): Name of DataFrame column for fetching from defaultdict.
-
-        Raises:
-            ValueError: _description_
-        """
-        # Could be implemented to fetch by plot number, but currently fetches most recent plot
-        if not self.plot_storage[col_name][plot_type]:
-            print(f"No plot found for '{col_name}' with dtype '{plot_type}'")
-        else:
-            # Fetch data for single most recent plot of specified dtype and col_name
-            stored_data = self.plot_storage[col_name][plot_type]['data'][-1]
-            stored_order = self.plot_storage[col_name][plot_type]['plot_num'][-1]
-
-            print(f"Redrawing {plot_type} plot #{stored_order} for '{col_name}'")
-
-            if plot_type == 'hist':
-                plot = sns.histplot(data=stored_data, kde=True)
-                plot.set_title(f"Histogram #{stored_order} for '{col_name}'")
-            elif plot_type == 'box':
-                plot = sns.boxplot(data=stored_data)
-                plot.set_title(f"Box Plot #{stored_order} for '{col_name}'")
-            elif plot_type == 'line':
-                plot = sns.lineplot(data=stored_data)
-                plot.set_title(f"Line Plot #{stored_order} for '{col_name}'")
-            elif plot_type == 'scatter':
-                plot = sns.scatterplot(data=stored_data)
-                plot.set_title(f"Scatter Plot #{stored_order} for '{col_name}'")
-            plt.show()
-        
-        return
-
-    def compare_plots(self, col_name: str):
-        """
-        Compare all stored plots for a given column.
-
-        Args:
-            col_name (str): Name of DataFrame column for which plots will be compared.
-
-        Raises:
-            ValueError: _description_
-        """
-
-        types_list = ['hist', 'box', 'line', 'scatter']
-
-        # Determine the number of rows and columns for subplots
-        subplots_nrows = max(len(self.plot_storage[col_name][plot_type]['data']) for plot_type in types_list)
-        
-        subplots_ncols = sum(1 for plot_type in types_list if self.plot_storage[col_name][plot_type]['data'])
-
-        # debug
-        print(f"nrows: {subplots_nrows}, ncols: {subplots_ncols}")
-
-        # Create subplots
-        fig, ax = plt.subplots(nrows=subplots_nrows,
-                               ncols=subplots_ncols,
-                               sharex=True
-                               )
-
-        # Ensure ax is always a 2D array for consistent indexing
-        if subplots_nrows == 1:
-            ax = [ax]  # Convert to a list for 1D case
-        if subplots_ncols == 1:
-            ax = [[a] for a in ax]  # Convert to a nested list for 2D case
-
-        # Iterate over columns (plot types)
-        for col, curr_plot_type in enumerate(types_list):
-            if curr_plot_type in self.plot_storage[col_name]:
-                # Iterate over rows (individual plots)
-                for row, data in enumerate(self.plot_storage[col_name][curr_plot_type]['data']):
-                    # Validate data presence
-                    if data.dropna().empty:
-                        print(f"No valid data available for {curr_plot_type} at position: {row, col}")
-                        continue
-                    
-                    ### BUG HERE: sns.histplot does not populate for 1st column in 2D .subplots() case
-                    print(f"Plotting {curr_plot_type} at position: {row, col}")
-                    if curr_plot_type == 'hist':
-                        sns.histplot(data=data, kde=True, ax=ax[row][col])
-                    elif curr_plot_type == 'box':
-                        sns.boxplot(data=data, ax=ax[row][col])
-                    elif curr_plot_type == 'line':
-                        sns.lineplot(data=data, ax=ax[row][col])
-                    elif curr_plot_type == 'scatter':
-                        sns.scatterplot(data=data, ax=ax[row][col])
-
-                    ax[row][col].set_title(f"{curr_plot_type.capitalize()} Plot {row+1}")
-
-        fig.suptitle(f"Comparison of all plots for '{col_name}'")
-        plt.tight_layout()
-        plt.show()
-
-        return
-
-
-def _build_interactions_core(
-        df: pd.DataFrame,
-        f1: str | None = None,
-        f2: str | None = None,
-        features_list: list[str] | None = None,
-        interact_types: list[str] | None = None,
-        verbose: bool = True,
-        preserve_features: bool = True
-        # max_features: int | None = None
-) -> pd.DataFrame:
-    """
-    Core function to build interaction terms between specified features in a DataFrame.
-
-    Args:
-        df (pd.DataFrame): Input DataFrame to build interactions from.
-        f1 (str): Feature 1 to interact in "focused" paradigm.
-        f2 (str): Feature 2 to interact in "focused" paradigm.
-        features_list (list[str]): List of features to interact in "exploratory" paradigm.
-        interact_types (list[str]): List of interaction types to apply.
-        verbose (bool): Whether to print detailed information about operations. Defaults to True.
-        preserve_features (bool): Whether to retain original features in the DataFrame. Defaults to True.
-        max_features (int): Optional maximum number of interaction features to create.
-
-    Returns:
-        pd.DataFrame: DataFrame with interaction terms appended and user-specified columns removed.
-
-    Raises:
-        ValueError: If invalid interaction types are provided.
-    """
-
-    # Check for existence of input DataFrame
-    if df.empty:
-        print('DataFrame is empty. No interactions can be created.')
-        return df
-
-    if verbose:
-        print('-' * 50)  # Visual separator
-        print('Beginning feature interaction process.')
-        print('-' * 50)  # Visual separator
-
-    # Remove dupes from 'interact_types' if they exists
-    # Replace "categorical calls" if included
-    # and preserve order:
-    def clean_interact_types(interact_types: list[str]):
-        # Replace "categorical calls" if included, including dupes
-        if 'arithmetic' in interact_types:
-            interact_types = [x for x in interact_types if x != 'arithmetic']
-            interact_types = ['+', '-', '*', '/'] + interact_types
-        if 'exponential' in interact_types:
-            interact_types = [x for x in interact_types if x != 'exponential']
-            interact_types = ['^2', '^3', '^1/2', '^1/3', 'e^x'] + interact_types
-        if 'distance' in interact_types:
-            interact_types = [x for x in interact_types if x != 'distance']
-            interact_types = ['magnitude','magsum', 'magdiff'] + interact_types
-        if 'polynomial' in interact_types:
-            interact_types = [x for x in interact_types if x != 'polynomial']
-            interact_types = ['poly', 'prod^1/2', 'prod^1/3'] + interact_types
-        if 'logexp' in interact_types:
-            interact_types = [x for x in interact_types if x != 'logexp']
-            interact_types = ['log_inter', 'exp_inter'] + interact_types
-        if 'stat' in interact_types:
-            interact_types = [x for x in interact_types if x != 'stat']
-            interact_types = ['mean_diff', 'mean_ratio'] + interact_types
-
-        # Remove dupes from 'interact_types' if they exists
-        seen = set()
-        result_list = []
-        for type in interact_types:
-            if type in seen:
-                if verbose:
-                    print(f"Duplicate interaction type '{type}' detected. Removing...")
-            if type not in seen:
-                result_list.append(type)
-                seen.add(type)
-        interact_types = result_list
-
-        return interact_types
-
-    if interact_types:
-        interact_types = clean_interact_types(interact_types)
-
-
-    # Check for valid interaction categories or types
-    valid_types = ['arithmetic',                        # Categorical interaction calls
-                   'exponential',                       #
-                   'distance',                          #
-                   'polynomial',                        #
-                   'logexp',                            #
-                   'stat',                              #
-                   '+', '-', '*', '/',                  # Arithmetic
-                   '^2', '^3', '^1/2', '^1/3', 'e^x',   # Exponential
-                   'magnitude','magsum', 'magdiff',     # Distance
-                   'poly', 'prod^1/2', 'prod^1/3',      # Polynomial and other roots
-                   'log_inter', 'exp_inter',            # Logarithmic and exponential interactions
-                   'mean_diff', 'mean_ratio']           # Statistical interactions
-
-    manual_abort = 0
-    if (interact_types is None) or (not interact_types):
-        print(f"""
-                No interaction types specified.
-                Available interaction types are:
-                Arithmetic    ->  '+', '-', '*', '/'
-                Exponential  ->  '^2', '^3', '^1/2', '^1/3', 'e^x'
-                Distance     ->  'magnitude', 'magsum', 'magdiff'
-                Polynomial   ->  'poly', 'prod^1/2', 'prod^1/3'
-                Logarithmic  ->  'log_inter', 'exp_inter'
-                Statistical  ->  'mean_diff', 'mean_ratio'
-                """)
-        input0 = input("Would you like further detail on the available interaction types? (Y/N): ")
-        if input0.lower() == 'y':
-            print(f"""
-                    '+' : Column-wise sum of features            ->  df[f1] + df[f2]
-                    '-' : Column-wise difference of features     ->  df[f1] - df[f2]
-                    '*' : Column-wise product of features        ->  df[f1] * df[f2]
-                    '/' : Column-wise quotient of features       ->  df[f1] / df[f2]
-                    '^2'   : Single-column square of feature     ->  df[f1] ** 2
-                    '^3'   : Single-column cube of feature       ->  df[f1] ** 3
-                    '^1/2' : Single-column sqrt of feature       ->  np.sqrt(df[f1])
-                    '^1/3' : Single-column cbrt of feature       ->  np.cbrt(df[f1])
-                    'e^x'  : Single-column exponent of feature   ->  np.exp(df[f1])
-                    'magnitude' : Column-wise sqrt of squares    ->  np.sqrt(df[f1] ** 2 + df[f2] ** 2)
-                    'magsum'   : Column-wise absolute diff       ->  np.abs(df[f1] + df[f2])
-                    'magdiff'   : Column-wise absolute diff      ->  np.abs(df[f1] - df[f2])
-                    'poly'     : Column-wise binomial square     ->  df[f1] * df[f2] + df[f1] ** 2 + df[f2] ** 2
-                    'prod^1/2' : Column-wise sqrt of product     ->  np.sqrt(np.abs(df[f1] * df[f2]))
-                    'prod^1/3' : Column-wise cbrt of product     ->  np.cbrt(df[f1] * df[f2])
-                    'log_inter' : Product of offset logarithms   ->  np.log(df[f1] + 1) * np.log(df[f2] + 1)
-                    'exp_inter' : Product of feature exponents   ->  np.exp(df[f1]) * np.exp(df[f2])
-                    'mean_diff'  : f1 difference from f1,f2 mean ->  df[f1] - df[[f1, f2]].mean(axis=1)
-                    'mean_ratio' : Ratio of f1 to f1,f2 mean     ->  df[f1] / df[[f1, f2]].mean(axis=1)
-                """)
-        elif input0.lower() == 'n':
-            pass
-        else:
-            print("Invalid input. Select 'Y' or 'N'.")
-
-        iter_input = 0
-        while True:
-            if iter_input == 0:
-                input1 = input(f"""
-                                Interaction types must be specified for .build_interactions() operation.
-                                Please select one of the following:
-                                1. Provide a list of custom interaction types   (comma-separated format. i.e. [+,^2,magnitude,...])
-                                2. Apply some common "default" interactions     (Arithmetic interactions [+,-,*,/])
-                                3. Exit method
-                                -> """)
-            elif iter_input > 0:
-                input1 = input("-> ")
-
-            if input1.lower() == '1':
-                input10 = input("Interaction types: ")
-                interact_types = input10.lower().split(",")
-                print(f"\nContinuing with new interact_types: {interact_types}")
-                break
-            elif input1.lower() == '2':
-                print("Defaulting to ALL Arithmetic interactions (+, -, *, /).")
-                interact_types = ['+', '-', '*', '/']
-                break
-
-            elif input1.lower() == '3':
-                print("Aborting .build_interactions() operation. Input DataFrame not modified")
-                manual_abort = 1
-                break
-            else:
-                print("Invalid input. Select '1', '2', or '3'")
-                iter_input += 1
-                continue
-
-    if manual_abort == 1:
-        return df
-
-    for type in interact_types:
-        if type not in valid_types:
-            raise ValueError(f'Invalid interaction type: {type}')
-        
-    # Clean up runtime user inputs
-    interact_types = clean_interact_types(interact_types)
-
-    if features_list and len(features_list) == 1 and not set(interact_types).issubset(set(['^2', '^3', '^1/2', '^1/3', 'e^x'])):
-        print("Only 1 feature provided and multi-feature interaction types specified. INVALID OPERATION SET. Aborting method. Input DataFrame not modified.")
-        return df
-    
-    # Record of actions for 'verbose' state
-    action_summary = []
-
-    ## Handle error from incorrect 'f1', 'f2' arg input
-    if f2 and not f1:
-        print("Only 'f2' feature provided for TADPREP 'Focused' _build_interactions method. Please provide only 'f1' if single-column interactions desired.")
-        return df
-
-    ### "focused" interaction creation paradigm
-    ### i.e. specific interactions between two specifically-provided features
-    if f1:
-        if not f2:
-            print("'f2' feature not provided for multi-column interaction. Aborting method. Input DataFrame not modified.")
-            return df
-        if set(interact_types).issubset(set(['^2', '^3', '^1/2', '^1/3', 'e^x'])):
-            print("WARNING: All provided interact_types are single-column interactions. Only f1-argument-sourced interactions will be created in 'Focused' paradigm.")
-        # Perform interaction term creation
-        for interact in interact_types:
-            
-            ## Arithmetic interactions
-            if interact == '+':                     # Sum
-                new_feature = f'{f1}_+_{f2}'
-                df[new_feature] = df[f1] + df[f2]
-            elif interact == '-':                   # Difference
-                new_feature = f'{f1}_-_{f2}'
-                df[new_feature] = df[f1] - df[f2]
-            elif interact == '*':                   # Product
-                new_feature = f'{f1}_*_{f2}'
-                df[new_feature] = df[f1] * df[f2]
-            elif interact == '/':                   # Quotient
-                new_feature = f'{f1}_/_{f2}'
-                df[new_feature] = df[f1] / df[f2]
-                # Replace infinite values with NaN
-                df[new_feature] = df[new_feature].replace([np.inf, -np.inf], np.nan)
-
-                if verbose:
-                    print('***Div-by-zero errors are replaced with NaN. Take care to handle these and propagated-NaNs in your analysis.***')
-
-            ## Exponential interactions
-            elif interact == '^2':                  # Square
-                new_feature = f'{f1}^2'
-                df[new_feature] = df[f1] ** 2
-            elif interact == '^3':                  # Cube
-                new_feature = f'{f1}^3'
-                df[new_feature] = df[f1] ** 3
-            elif interact == '^1/2':                # Square root
-                new_feature = f'{f1}^1/2'
-                df[new_feature] = np.sqrt(df[f1])
-            elif interact == '^1/3':                # Cube root
-                new_feature = f'{f1}^1/3'
-                df[new_feature] = np.cbrt(df[f1])
-            elif interact == 'e^x':                 # Exponential
-                new_feature = f'e^{f1}'
-                df[new_feature] = np.exp(df[f1])
-
-            ## Distance interactions
-            elif interact == 'magnitude':           # Magnitude
-                new_feature = f'magnitude_{f1}_{f2}'
-                df[new_feature] = np.sqrt(df[f1] ** 2 + df[f2] ** 2)
-            elif interact == 'magsum':              # Magnitude sum
-                new_feature = f'magsum_{f1}_{f2}'
-                df[new_feature] = np.abs(df[f1] + df[f2])
-            elif interact == 'magdiff':             # Magnitude difference
-                new_feature = f'magdiff_{f1}_{f2}'
-                df[new_feature] = np.abs(df[f1] - df[f2])
-            
-            ## Polynomial and other roots
-            elif interact == 'poly':                # Polynomial
-                new_feature = f'poly_{f1}_{f2}'
-                df[new_feature] = df[f1] * df[f2] + df[f1] ** 2 + df[f2] ** 2
-            elif interact == 'prod^1/2':            # Product square root
-                new_feature = f'prod^1/2_{f1}_{f2}'
-                df[new_feature] = np.sqrt(np.abs(df[f1] * df[f2]))
-            elif interact == 'prod^1/3':            # Product cube root
-                new_feature = f'prod^1/3_{f1}_{f2}'
-                df[new_feature] = np.cbrt(df[f1] * df[f2])
-            
-            ## Logarithmic and exponential interactions
-            elif interact == 'log_inter':           # Logarithmic interaction
-                new_feature = f'log_inter_{f1}_{f2}'
-                df[new_feature] = np.log(df[f1] + 1) * np.log(df[f2] + 1)
-            elif interact == 'exp_inter':           # Exponential interaction
-                new_feature = f'exp_inter_{f1}_{f2}'
-                df[new_feature] = np.exp(df[f1]) * np.exp(df[f2])
-
-            ## Statistical interactions
-            elif interact == 'mean_diff':           # Mean difference
-                new_feature = f'mean_diff_{f1}_{f2}'
-                df[new_feature] = df[f1] - df[[f1, f2]].mean(axis=1)
-            elif interact == 'mean_ratio':          # Mean ratio
-                new_feature = f'mean_ratio_{f1}_{f2}'
-                df[new_feature] = df[f1] / df[[f1, f2]].mean(axis=1)
-
-            if verbose:
-                summary_str = f'Created new feature: {new_feature} ({interact} interaction)'
-                action_summary.append(summary_str)
-                print(summary_str)
-
-        if not preserve_features:
-            if verbose:
-                drop_str = f'Dropping original features {f1} and {f2} from DataFrame.'
-                action_summary.append(drop_str)
-                print(drop_str)
-            df.drop(columns=[f1,f2], inplace=True)
-
-    ### "exploratory" interaction creation paradigm
-    ### i.e. all possible interactions between all features in provided list
-    if features_list:
-        # Perform interaction term creation with itertools.combinations
-        if len(features_list) == 1:
-            feature_combinations = [(features_list[0], None)]
-        else:
-            feature_combinations = list(combinations(set(features_list), 2))
-        if verbose:
-            print("All combinations of submitted 'features_list' elements:")
-            print(feature_combinations)
-        # Create flag for "only single-feature interactions present"
-        single_feat_interactions_only = 0
-        # Adjust if necessary
-        if set(interact_types).issubset(set(['^2', '^3', '^1/2', '^1/3', 'e^x'])):
-            single_feat_interactions_only = 1
-            
-        for feature, other_feature in feature_combinations:
-            for interact in interact_types:
-                
-                # Arithmetic interactions
-                if interact == '+':           # Sum
-                    new_feature = f'{feature}_+_{other_feature}'
-                    df[new_feature] = df[feature] + df[other_feature]
-                elif interact == '-':           # Difference
-                    new_feature = f'{feature}_-_{other_feature}'
-                    df[new_feature] = df[feature] - df[other_feature]
-                elif interact == '*':             # Product
-                    new_feature = f'{feature}_*_{other_feature}'
-                    df[new_feature] = df[feature] * df[other_feature]
-                elif interact == '/':           # Quotient
-                    new_feature = f'{feature}_/_{other_feature}'
-                    df[new_feature] = df[feature] / df[other_feature]
-                    # Replace infinite values with NaN
-                    df[new_feature] = df[new_feature].replace([np.inf, -np.inf], np.nan)
-                    
-                    if verbose:
-                        print('***Div-by-zero errors are replaced with NaN. Take care to handle these and propagated-NaNs in your analysis.***')
-
-                # Exponential interactions
-                elif interact == '^2':          # Square
-                    new_feature = f'{feature}^2'
-                    if new_feature not in df.columns:
-                        df[new_feature] = df[feature] ** 2
-                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
-                        new_feature_2 = f'{other_feature}^2'
-                        df[new_feature_2] = df[other_feature] ** 2
-                elif interact == '^3':          # Cube
-                    new_feature = f'{feature}^3'
-                    if new_feature not in df.columns:
-                        df[new_feature] = df[feature] ** 3
-                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
-                        new_feature_2 = f'{other_feature}^3'
-                        df[new_feature_2] = df[other_feature] ** 3
-                elif interact == '^1/2':        # Square root
-                    new_feature = f'{feature}^1/2'
-                    if new_feature not in df.columns:
-                        df[new_feature] = np.sqrt(df[feature])
-                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
-                        new_feature_2 = f'{other_feature}^1/2'
-                        df[new_feature_2] = np.sqrt(df[other_feature])
-                elif interact == '^1/3':        # Cube root
-                    new_feature = f'{feature}^1/3'
-                    if new_feature not in df.columns:
-                        df[new_feature] = np.cbrt(df[feature])
-                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
-                        new_feature_2 = f'{other_feature}^1/3'
-                        df[new_feature_2] = np.cbrt(df[other_feature])
-                elif interact == 'e^x':         # Exponential
-                    new_feature = f'e^{feature}'
-                    if new_feature not in df.columns:
-                        df[new_feature] = np.exp(df[feature])
-                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
-                        new_feature_2 = f'e^{other_feature}'
-                        df[new_feature_2] = np.exp(df[other_feature])
-
-                # Distance interactions
-                elif interact == 'magnitude':   # Magnitude
-                    new_feature = f'magnitude_{feature}_{other_feature}'
-                    df[new_feature] = np.sqrt(df[feature] ** 2 + df[other_feature] ** 2)
-                elif interact == 'magsum':      # Magnitude sum
-                    new_feature = f'magsum_{feature}_{other_feature}'
-                    df[new_feature] = np.abs(df[feature] + df[other_feature])
-                elif interact == 'magdiff':     # Magnitude difference
-                    new_feature = f'magdiff_{feature}_{other_feature}'
-                    df[new_feature] = np.abs(df[feature] - df[other_feature])
-
-                # Polynomial and other roots
-                elif interact == 'poly':        # Polynomial
-                    new_feature = f'poly_{feature}_{other_feature}'
-                    df[new_feature] = df[feature] * df[other_feature] + df[feature] ** 2 + df[other_feature] ** 2
-                elif interact == 'prod^1/2':    # Product square root
-                    new_feature = f'prod^1/2_{feature}_{other_feature}'
-                    df[new_feature] = np.sqrt(np.abs(df[feature] * df[other_feature]))
-                elif interact == 'prod^1/3':    # Product cube root
-                    new_feature = f'prod^1/3_{feature}_{other_feature}'
-                    df[new_feature] = np.cbrt(df[feature] * df[other_feature])
-
-                # Logarithmic and exponential interactions
-                elif interact == 'log_inter':   # Logarithmic interaction
-                    new_feature = f'log_inter_{feature}_{other_feature}'
-                    df[new_feature] = np.log(df[feature] + 1) * np.log(df[other_feature] + 1)
-                elif interact == 'exp_inter':   # Exponential interaction
-                    new_feature = f'exp_inter_{feature}_{other_feature}'
-                    df[new_feature] = np.exp(df[feature]) * np.exp(df[other_feature])
-
-                # Statistical interactions
-                elif interact == 'mean_diff':   # Mean difference
-                    new_feature = f'mean_diff_{feature}_{other_feature}'
-                    df[new_feature] = df[feature] - df[[feature, other_feature]].mean(axis=1)
-                elif interact == 'mean_ratio':  # Mean ratio
-                    new_feature = f'mean_ratio_{feature}_{other_feature}'
-                    df[new_feature] = df[feature] / df[[feature, other_feature]].mean(axis=1)
-
-                if verbose:
-                    summary_str = f'Created new feature: {new_feature} ({interact} interaction)'
-                    action_summary.append(summary_str)
-                    print(summary_str)
-                    if (single_feat_interactions_only == 1) and (feature_combinations[0][1] != None):
-                        summary_str_2 = f'Created new feature: {new_feature_2} ({interact} interaction)'
-                        action_summary.append(summary_str_2)
-                        print(summary_str_2)
-
-        # Drop original features if user specifies
-        if not preserve_features:
-            if verbose:
-                drop_str = f'Dropping original features from DataFrame:\n{features_list}'
-                action_summary.append(drop_str)
-                print(drop_str)
-            df.drop(columns=features_list, inplace=True)
-
-    # Closing verbosity
-    if verbose:
-        iter_input = 0
-        while True:
-            if iter_input == 0:
-                input2 = input("\nOperations complete. Would you like an action summary? (Y/N): ")
-            elif iter_input > 0:
-                input2 = input("-> ")
-
-            if input2.lower() == 'y':
-                print("\nThe following actions were performed by build_interactions():")
-                for action in action_summary:
-                    print(action)
-                break
-            elif input2.lower() == 'n':
-                break
-            else:
-                print("Invlid input. Please enter either 'Y' or 'N'.")
-                iter_input += 1
-    if verbose:
-        print('-' * 50)  # Visual separator
-        print('Feature interaction complete. Returning modified dataframe.')
-        print('-' * 50)  # Visual separator
-
-    return df
-
-
 def _transform_core(
         df: pd.DataFrame,
         features_to_transform: list[str] | None = None,
@@ -5009,407 +4741,678 @@ def _extract_datetime_core(
     return df
 
 
-def _make_plots_core(df: pd.DataFrame, features_to_plot: list[str] | None = None) -> None:
+# THIS IS GABOR'S CODE
+def _build_interactions_core(
+        df: pd.DataFrame,
+        f1: str | None = None,
+        f2: str | None = None,
+        features_list: list[str] | None = None,
+        interact_types: list[str] | None = None,
+        verbose: bool = True,
+        preserve_features: bool = True
+        # max_features: int | None = None
+) -> pd.DataFrame:
     """
-    Core function to create and display plots for specified features in a DataFrame.
-
-    Interactively guides users through selecting features and plot types based on
-    the data characteristics of each feature. Supports plotting of numerical, categorical,
-    and datetime features using appropriate visualization methods.
+    Core function to build interaction terms between specified features in a DataFrame.
 
     Args:
-        df (pd.DataFrame): Input DataFrame containing features to plot.
-        features_to_plot (list[str] | None, default=None): Optional list of features to plot.
-            If None, the function will help identify and select features.
+        df (pd.DataFrame): Input DataFrame to build interactions from.
+        f1 (str): Feature 1 to interact in "focused" paradigm.
+        f2 (str): Feature 2 to interact in "focused" paradigm.
+        features_list (list[str]): List of features to interact in "exploratory" paradigm.
+        interact_types (list[str]): List of interaction types to apply.
+        verbose (bool): Whether to print detailed information about operations. Defaults to True.
+        preserve_features (bool): Whether to retain original features in the DataFrame. Defaults to True.
+        max_features (int): Optional maximum number of interaction features to create.
 
     Returns:
-        None. This function produces plots but does not return any values.
+        pd.DataFrame: DataFrame with interaction terms appended and user-specified columns removed.
+
+    Raises:
+        ValueError: If invalid interaction types are provided.
     """
-    # Validate features_to_plot if provided
-    if features_to_plot is not None:
-        missing_cols = [col for col in features_to_plot if col not in df.columns]
-        if missing_cols:
-            print(f'Features not found in DataFrame: {missing_cols}')
-            print('These features will be ignored.')
-            features_to_plot = [col for col in features_to_plot if col in df.columns]
 
-        if not features_to_plot:  # If all provided features were invalid
-            print('No valid features to plot. Using all available features.')
-            features_to_plot = None
+    # Check for existence of input DataFrame
+    if df.empty:
+        print('DataFrame is empty. No interactions can be created.')
+        return df
 
-    # Identify feature types
-    num_cols = []
-    cat_cols = []
-    datetime_cols = []
+    if verbose:
+        print('-' * 50)  # Visual separator
+        print('Beginning feature interaction process.')
+        print('-' * 50)  # Visual separator
 
-    for col in df.columns:
-        # Check for datetime features
-        if pd.api.types.is_datetime64_any_dtype(df[col]):
-            datetime_cols.append(col)
-        # Check for string/categorical features
-        elif pd.api.types.is_object_dtype(df[col]) or isinstance(df[col].dtype, pd.CategoricalDtype):
-            cat_cols.append(col)
-        # Check for numerical features
-        elif pd.api.types.is_numeric_dtype(df[col]):
-            num_cols.append(col)
+    # Remove dupes from 'interact_types' if they exists
+    # Replace "categorical calls" if included
+    # and preserve order:
+    def clean_interact_types(interact_types: list[str]):
+        # Replace "categorical calls" if included, including dupes
+        if 'arithmetic' in interact_types:
+            interact_types = [x for x in interact_types if x != 'arithmetic']
+            interact_types = ['+', '-', '*', '/'] + interact_types
+        if 'exponential' in interact_types:
+            interact_types = [x for x in interact_types if x != 'exponential']
+            interact_types = ['^2', '^3', '^1/2', '^1/3', 'e^x'] + interact_types
+        if 'distance' in interact_types:
+            interact_types = [x for x in interact_types if x != 'distance']
+            interact_types = ['magnitude','magsum', 'magdiff'] + interact_types
+        if 'polynomial' in interact_types:
+            interact_types = [x for x in interact_types if x != 'polynomial']
+            interact_types = ['poly', 'prod^1/2', 'prod^1/3'] + interact_types
+        if 'logexp' in interact_types:
+            interact_types = [x for x in interact_types if x != 'logexp']
+            interact_types = ['log_inter', 'exp_inter'] + interact_types
+        if 'stat' in interact_types:
+            interact_types = [x for x in interact_types if x != 'stat']
+            interact_types = ['mean_diff', 'mean_ratio'] + interact_types
 
-    # Try to convert string columns to datetime if they look like dates
-    for col in cat_cols[:]:  # Use a copy to iterate
-        if col not in datetime_cols:
-            try:
-                # Test conversion on first few non-null values
-                sample = df[col].dropna().head()
-                if not sample.empty:
-                    # Try common date formats first
-                    common_fmts = ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y-%m-%d %H:%M:%S',
-                                   '%m/%d/%Y %H:%M:%S', '%d/%m/%Y %H:%M:%S']
+        # Remove dupes from 'interact_types' if they exists
+        seen = set()
+        result_list = []
+        for type in interact_types:
+            if type in seen:
+                if verbose:
+                    print(f"Duplicate interaction type '{type}' detected. Removing...")
+            if type not in seen:
+                result_list.append(type)
+                seen.add(type)
+        interact_types = result_list
 
-                    converted = False
-                    for fmt in common_fmts:
-                        try:
-                            # Try the specific format
-                            result = pd.to_datetime(sample, format=fmt, errors='coerce')
-                            if result.notna().any():
-                                datetime_cols.append(col)
-                                cat_cols.remove(col)
-                                print(f'"{col}" contains datetime-like values and will be treated as datetime.')
-                                converted = True
-                                break
-                        except ValueError:
-                            continue
+        return interact_types
 
-                    # If none of the specific formats worked, we try the generic parser as a fallback
-                    if not converted:
-                        # Suppress the warning with a context manager
-                        import warnings
-                        with warnings.catch_warnings():
-                            warnings.simplefilter("ignore")
-                            result = pd.to_datetime(sample, errors='coerce')
-                            if result.notna().any():
-                                datetime_cols.append(col)
-                                cat_cols.remove(col)
-                                print(f'"{col}" contains datetime-like values and will be treated as datetime.')
+    if interact_types:
+        interact_types = clean_interact_types(interact_types)
 
-            except (ValueError, TypeError):
-                pass
 
-    # If specific features were requested, filter them by type
-    if features_to_plot is not None:
-        filtered_num_cols = [col for col in num_cols if col in features_to_plot]
-        filtered_cat_cols = [col for col in cat_cols if col in features_to_plot]
-        filtered_datetime_cols = [col for col in datetime_cols if col in features_to_plot]
+    # Check for valid interaction categories or types
+    valid_types = ['arithmetic',                        # Categorical interaction calls
+                   'exponential',                       #
+                   'distance',                          #
+                   'polynomial',                        #
+                   'logexp',                            #
+                   'stat',                              #
+                   '+', '-', '*', '/',                  # Arithmetic
+                   '^2', '^3', '^1/2', '^1/3', 'e^x',   # Exponential
+                   'magnitude','magsum', 'magdiff',     # Distance
+                   'poly', 'prod^1/2', 'prod^1/3',      # Polynomial and other roots
+                   'log_inter', 'exp_inter',            # Logarithmic and exponential interactions
+                   'mean_diff', 'mean_ratio']           # Statistical interactions
 
-        num_cols = filtered_num_cols
-        cat_cols = filtered_cat_cols
-        datetime_cols = filtered_datetime_cols
+    manual_abort = 0
+    if (interact_types is None) or (not interact_types):
+        print(f"""
+                No interaction types specified.
+                Available interaction types are:
+                Arithmetic    ->  '+', '-', '*', '/'
+                Exponential  ->  '^2', '^3', '^1/2', '^1/3', 'e^x'
+                Distance     ->  'magnitude', 'magsum', 'magdiff'
+                Polynomial   ->  'poly', 'prod^1/2', 'prod^1/3'
+                Logarithmic  ->  'log_inter', 'exp_inter'
+                Statistical  ->  'mean_diff', 'mean_ratio'
+                """)
+        input0 = input("Would you like further detail on the available interaction types? (Y/N): ")
+        if input0.lower() == 'y':
+            print(f"""
+                    '+' : Column-wise sum of features            ->  df[f1] + df[f2]
+                    '-' : Column-wise difference of features     ->  df[f1] - df[f2]
+                    '*' : Column-wise product of features        ->  df[f1] * df[f2]
+                    '/' : Column-wise quotient of features       ->  df[f1] / df[f2]
+                    '^2'   : Single-column square of feature     ->  df[f1] ** 2
+                    '^3'   : Single-column cube of feature       ->  df[f1] ** 3
+                    '^1/2' : Single-column sqrt of feature       ->  np.sqrt(df[f1])
+                    '^1/3' : Single-column cbrt of feature       ->  np.cbrt(df[f1])
+                    'e^x'  : Single-column exponent of feature   ->  np.exp(df[f1])
+                    'magnitude' : Column-wise sqrt of squares    ->  np.sqrt(df[f1] ** 2 + df[f2] ** 2)
+                    'magsum'   : Column-wise absolute diff       ->  np.abs(df[f1] + df[f2])
+                    'magdiff'   : Column-wise absolute diff      ->  np.abs(df[f1] - df[f2])
+                    'poly'     : Column-wise binomial square     ->  df[f1] * df[f2] + df[f1] ** 2 + df[f2] ** 2
+                    'prod^1/2' : Column-wise sqrt of product     ->  np.sqrt(np.abs(df[f1] * df[f2]))
+                    'prod^1/3' : Column-wise cbrt of product     ->  np.cbrt(df[f1] * df[f2])
+                    'log_inter' : Product of offset logarithms   ->  np.log(df[f1] + 1) * np.log(df[f2] + 1)
+                    'exp_inter' : Product of feature exponents   ->  np.exp(df[f1]) * np.exp(df[f2])
+                    'mean_diff'  : f1 difference from f1,f2 mean ->  df[f1] - df[[f1, f2]].mean(axis=1)
+                    'mean_ratio' : Ratio of f1 to f1,f2 mean     ->  df[f1] / df[[f1, f2]].mean(axis=1)
+                """)
+        elif input0.lower() == 'n':
+            pass
+        else:
+            print("Invalid input. Select 'Y' or 'N'.")
 
-    def explain_plots():
-        """Explain available plot types based on feature characteristics."""
-        print('-' * 50)
-        print('Available Plot Types:')
-        print('-' * 50)
-        print('\nFor Numerical Features:')
-        print('- Histogram: Shows the overall distribution of a numerical feature')
-        print('- Box Plot: Shows the quartiles, median, and outliers of a numerical feature')
-        print('- Violin Plot: Similar to a box plot, but also shows density estimates')
-        print('- Scatter Plot: Shows the relationship between two numerical features')
-
-        print('\nFor Categorical Features:')
-        print('- Bar Plot: Summarizes a numeric variable at the level of each category')
-        print('- Count Plot: Shows count of occurrences for each category (pure frequencies)')
-        print('- Pie Chart: Shows proportion of each category as a slice of a circle')
-
-        print('\nFor Datetime Features:')
-        print('- Line Plot: Shows trends over time')
-        print('- Time Series: Shows values against datetime indices')
-
-        print('\nFor Mixed Feature Types:')
-        print('- Bar Plot: Useful when summarizing a numeric variable grouped by a categorical feature')
-        print('- Box Plot: Shows distribution of a numeric variable across categories')
-        print('- Violin Plot: Shows distribution and density of a numeric variable across categories')
-        print('- Scatter Plot with Hue: Numeric x and y, with categorical variable mapped to color')
-
-    # Offer explanation
-    user_explain = input('Would you like to see an explanation of available plot types? (Y/N): ').lower()
-    if user_explain == 'y':
-        explain_plots()
-
-    def select_features():
-        """Allow user to select features to plot."""
-        # Create a comprehensive list of features with types
-        all_features = []
-        for col in df.columns:
-            if col in num_cols:
-                all_features.append((col, 'numerical'))
-            elif col in cat_cols:
-                all_features.append((col, 'categorical'))
-            elif col in datetime_cols:
-                all_features.append((col, 'datetime'))
-
-        # Display features to user
-        print()
-        print('-' * 50)
-        print('Features available for plotting:')
-        print('-' * 50)
-        for idx, (col, col_type) in enumerate(all_features, 1):
-            print(f'{idx}. {col} ({col_type})')
-
-        # Get user selections
+        iter_input = 0
         while True:
-            selections = input('\nEnter up to 3 feature numbers (comma-separated) to plot: ')
-            try:
-                indices = [int(idx.strip()) - 1 for idx in selections.split(',')]
+            if iter_input == 0:
+                input1 = input(f"""
+                                Interaction types must be specified for .build_interactions() operation.
+                                Please select one of the following:
+                                1. Provide a list of custom interaction types   (comma-separated format. i.e. [+,^2,magnitude,...])
+                                2. Apply some common "default" interactions     (Arithmetic interactions [+,-,*,/])
+                                3. Exit method
+                                -> """)
+            elif iter_input > 0:
+                input1 = input("-> ")
 
-                # Validate indices
-                if not all(0 <= idx < len(all_features) for idx in indices):
-                    print('Error: Some feature numbers are out of range.')
-                    continue
+            if input1.lower() == '1':
+                input10 = input("Interaction types: ")
+                interact_types = input10.lower().split(",")
+                print(f"\nContinuing with new interact_types: {interact_types}")
+                break
+            elif input1.lower() == '2':
+                print("Defaulting to ALL Arithmetic interactions (+, -, *, /).")
+                interact_types = ['+', '-', '*', '/']
+                break
 
-                # Check number of selections
-                if len(indices) > 3:
-                    print('Error: You can select at most 3 features.')
-                    continue
-
-                if len(indices) == 0:
-                    print('Error: You must select at least one feature.')
-                    continue
-
-                # Get selected features with their types
-                selected_features = [all_features[idx] for idx in indices]
-                return selected_features
-
-            except ValueError:
-                print('Error: Please enter valid numbers separated by commas.')
-
-    def get_appropriate_plot_types(selected_features):
-        """Determine appropriate plot types based on selected features."""
-        feature_types = [feature_type for _, feature_type in selected_features]
-
-        # For a single feature
-        if len(selected_features) == 1:
-            feature_type = feature_types[0]
-            if feature_type == 'numerical':
-                return ['histogram', 'boxplot', 'violinplot']
-
-            elif feature_type == 'categorical':
-                return ['countplot', 'barplot', 'pieplot']
-
-            elif feature_type == 'datetime':
-                return ['lineplot']
-
-        # For two features
-        elif len(selected_features) == 2:
-            # Two numerical features
-            if all(ft == 'numerical' for ft in feature_types):
-                return ['scatterplot', 'lineplot', 'heatmap']
-
-            # One numerical and one categorical
-            elif 'numerical' in feature_types and 'categorical' in feature_types:
-                return ['barplot', 'boxplot', 'violinplot']
-
-            # One numerical and one datetime
-            elif 'numerical' in feature_types and 'datetime' in feature_types:
-                return ['lineplot', 'scatterplot']
-
-            # Two categorical features
-            elif all(ft == 'categorical' for ft in feature_types):
-                return ['countplot', 'heatmap']
-
-            # Other combinations
+            elif input1.lower() == '3':
+                print("Aborting .build_interactions() operation. Input DataFrame not modified")
+                manual_abort = 1
+                break
             else:
-                return ['scatterplot']
+                print("Invalid input. Select '1', '2', or '3'")
+                iter_input += 1
+                continue
 
-        # For three features
-        elif len(selected_features) == 3:
-            # At least one numerical and one categorical
-            if 'numerical' in feature_types and 'categorical' in feature_types:
-                return ['scatterplot_with_hue', 'lineplot_with_hue']
+    if manual_abort == 1:
+        return df
 
-            # All numerical
-            elif all(ft == 'numerical' for ft in feature_types):
-                return ['pairplot', 'scatterplot_with_hue']
+    for type in interact_types:
+        if type not in valid_types:
+            raise ValueError(f'Invalid interaction type: {type}')
+        
+    # Clean up runtime user inputs
+    interact_types = clean_interact_types(interact_types)
 
-            # Other combinations
+    if features_list and len(features_list) == 1 and not set(interact_types).issubset(set(['^2', '^3', '^1/2', '^1/3', 'e^x'])):
+        print("Only 1 feature provided and multi-feature interaction types specified. INVALID OPERATION SET. Aborting method. Input DataFrame not modified.")
+        return df
+    
+    # Record of actions for 'verbose' state
+    action_summary = []
+
+    ## Handle error from incorrect 'f1', 'f2' arg input
+    if f2 and not f1:
+        print("Only 'f2' feature provided for TADPREP 'Focused' _build_interactions method. Please provide only 'f1' if single-column interactions desired.")
+        return df
+
+    ### "focused" interaction creation paradigm
+    ### i.e. specific interactions between two specifically-provided features
+    if f1:
+        if not f2:
+            print("'f2' feature not provided for multi-column interaction. Aborting method. Input DataFrame not modified.")
+            return df
+        if set(interact_types).issubset(set(['^2', '^3', '^1/2', '^1/3', 'e^x'])):
+            print("WARNING: All provided interact_types are single-column interactions. Only f1-argument-sourced interactions will be created in 'Focused' paradigm.")
+        # Perform interaction term creation
+        for interact in interact_types:
+            
+            ## Arithmetic interactions
+            if interact == '+':                     # Sum
+                new_feature = f'{f1}_+_{f2}'
+                df[new_feature] = df[f1] + df[f2]
+            elif interact == '-':                   # Difference
+                new_feature = f'{f1}_-_{f2}'
+                df[new_feature] = df[f1] - df[f2]
+            elif interact == '*':                   # Product
+                new_feature = f'{f1}_*_{f2}'
+                df[new_feature] = df[f1] * df[f2]
+            elif interact == '/':                   # Quotient
+                new_feature = f'{f1}_/_{f2}'
+                df[new_feature] = df[f1] / df[f2]
+                # Replace infinite values with NaN
+                df[new_feature] = df[new_feature].replace([np.inf, -np.inf], np.nan)
+
+                if verbose:
+                    print('***Div-by-zero errors are replaced with NaN. Take care to handle these and propagated-NaNs in your analysis.***')
+
+            ## Exponential interactions
+            elif interact == '^2':                  # Square
+                new_feature = f'{f1}^2'
+                df[new_feature] = df[f1] ** 2
+            elif interact == '^3':                  # Cube
+                new_feature = f'{f1}^3'
+                df[new_feature] = df[f1] ** 3
+            elif interact == '^1/2':                # Square root
+                new_feature = f'{f1}^1/2'
+                df[new_feature] = np.sqrt(df[f1])
+            elif interact == '^1/3':                # Cube root
+                new_feature = f'{f1}^1/3'
+                df[new_feature] = np.cbrt(df[f1])
+            elif interact == 'e^x':                 # Exponential
+                new_feature = f'e^{f1}'
+                df[new_feature] = np.exp(df[f1])
+
+            ## Distance interactions
+            elif interact == 'magnitude':           # Magnitude
+                new_feature = f'magnitude_{f1}_{f2}'
+                df[new_feature] = np.sqrt(df[f1] ** 2 + df[f2] ** 2)
+            elif interact == 'magsum':              # Magnitude sum
+                new_feature = f'magsum_{f1}_{f2}'
+                df[new_feature] = np.abs(df[f1] + df[f2])
+            elif interact == 'magdiff':             # Magnitude difference
+                new_feature = f'magdiff_{f1}_{f2}'
+                df[new_feature] = np.abs(df[f1] - df[f2])
+            
+            ## Polynomial and other roots
+            elif interact == 'poly':                # Polynomial
+                new_feature = f'poly_{f1}_{f2}'
+                df[new_feature] = df[f1] * df[f2] + df[f1] ** 2 + df[f2] ** 2
+            elif interact == 'prod^1/2':            # Product square root
+                new_feature = f'prod^1/2_{f1}_{f2}'
+                df[new_feature] = np.sqrt(np.abs(df[f1] * df[f2]))
+            elif interact == 'prod^1/3':            # Product cube root
+                new_feature = f'prod^1/3_{f1}_{f2}'
+                df[new_feature] = np.cbrt(df[f1] * df[f2])
+            
+            ## Logarithmic and exponential interactions
+            elif interact == 'log_inter':           # Logarithmic interaction
+                new_feature = f'log_inter_{f1}_{f2}'
+                df[new_feature] = np.log(df[f1] + 1) * np.log(df[f2] + 1)
+            elif interact == 'exp_inter':           # Exponential interaction
+                new_feature = f'exp_inter_{f1}_{f2}'
+                df[new_feature] = np.exp(df[f1]) * np.exp(df[f2])
+
+            ## Statistical interactions
+            elif interact == 'mean_diff':           # Mean difference
+                new_feature = f'mean_diff_{f1}_{f2}'
+                df[new_feature] = df[f1] - df[[f1, f2]].mean(axis=1)
+            elif interact == 'mean_ratio':          # Mean ratio
+                new_feature = f'mean_ratio_{f1}_{f2}'
+                df[new_feature] = df[f1] / df[[f1, f2]].mean(axis=1)
+
+            if verbose:
+                summary_str = f'Created new feature: {new_feature} ({interact} interaction)'
+                action_summary.append(summary_str)
+                print(summary_str)
+
+        if not preserve_features:
+            if verbose:
+                drop_str = f'Dropping original features {f1} and {f2} from DataFrame.'
+                action_summary.append(drop_str)
+                print(drop_str)
+            df.drop(columns=[f1,f2], inplace=True)
+
+    ### "exploratory" interaction creation paradigm
+    ### i.e. all possible interactions between all features in provided list
+    if features_list:
+        # Perform interaction term creation with itertools.combinations
+        if len(features_list) == 1:
+            feature_combinations = [(features_list[0], None)]
+        else:
+            feature_combinations = list(combinations(set(features_list), 2))
+        if verbose:
+            print("All combinations of submitted 'features_list' elements:")
+            print(feature_combinations)
+        # Create flag for "only single-feature interactions present"
+        single_feat_interactions_only = 0
+        # Adjust if necessary
+        if set(interact_types).issubset(set(['^2', '^3', '^1/2', '^1/3', 'e^x'])):
+            single_feat_interactions_only = 1
+            
+        for feature, other_feature in feature_combinations:
+            for interact in interact_types:
+                
+                # Arithmetic interactions
+                if interact == '+':           # Sum
+                    new_feature = f'{feature}_+_{other_feature}'
+                    df[new_feature] = df[feature] + df[other_feature]
+                elif interact == '-':           # Difference
+                    new_feature = f'{feature}_-_{other_feature}'
+                    df[new_feature] = df[feature] - df[other_feature]
+                elif interact == '*':             # Product
+                    new_feature = f'{feature}_*_{other_feature}'
+                    df[new_feature] = df[feature] * df[other_feature]
+                elif interact == '/':           # Quotient
+                    new_feature = f'{feature}_/_{other_feature}'
+                    df[new_feature] = df[feature] / df[other_feature]
+                    # Replace infinite values with NaN
+                    df[new_feature] = df[new_feature].replace([np.inf, -np.inf], np.nan)
+                    
+                    if verbose:
+                        print('***Div-by-zero errors are replaced with NaN. Take care to handle these and propagated-NaNs in your analysis.***')
+
+                # Exponential interactions
+                elif interact == '^2':          # Square
+                    new_feature = f'{feature}^2'
+                    if new_feature not in df.columns:
+                        df[new_feature] = df[feature] ** 2
+                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
+                        new_feature_2 = f'{other_feature}^2'
+                        df[new_feature_2] = df[other_feature] ** 2
+                elif interact == '^3':          # Cube
+                    new_feature = f'{feature}^3'
+                    if new_feature not in df.columns:
+                        df[new_feature] = df[feature] ** 3
+                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
+                        new_feature_2 = f'{other_feature}^3'
+                        df[new_feature_2] = df[other_feature] ** 3
+                elif interact == '^1/2':        # Square root
+                    new_feature = f'{feature}^1/2'
+                    if new_feature not in df.columns:
+                        df[new_feature] = np.sqrt(df[feature])
+                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
+                        new_feature_2 = f'{other_feature}^1/2'
+                        df[new_feature_2] = np.sqrt(df[other_feature])
+                elif interact == '^1/3':        # Cube root
+                    new_feature = f'{feature}^1/3'
+                    if new_feature not in df.columns:
+                        df[new_feature] = np.cbrt(df[feature])
+                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
+                        new_feature_2 = f'{other_feature}^1/3'
+                        df[new_feature_2] = np.cbrt(df[other_feature])
+                elif interact == 'e^x':         # Exponential
+                    new_feature = f'e^{feature}'
+                    if new_feature not in df.columns:
+                        df[new_feature] = np.exp(df[feature])
+                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
+                        new_feature_2 = f'e^{other_feature}'
+                        df[new_feature_2] = np.exp(df[other_feature])
+
+                # Distance interactions
+                elif interact == 'magnitude':   # Magnitude
+                    new_feature = f'magnitude_{feature}_{other_feature}'
+                    df[new_feature] = np.sqrt(df[feature] ** 2 + df[other_feature] ** 2)
+                elif interact == 'magsum':      # Magnitude sum
+                    new_feature = f'magsum_{feature}_{other_feature}'
+                    df[new_feature] = np.abs(df[feature] + df[other_feature])
+                elif interact == 'magdiff':     # Magnitude difference
+                    new_feature = f'magdiff_{feature}_{other_feature}'
+                    df[new_feature] = np.abs(df[feature] - df[other_feature])
+
+                # Polynomial and other roots
+                elif interact == 'poly':        # Polynomial
+                    new_feature = f'poly_{feature}_{other_feature}'
+                    df[new_feature] = df[feature] * df[other_feature] + df[feature] ** 2 + df[other_feature] ** 2
+                elif interact == 'prod^1/2':    # Product square root
+                    new_feature = f'prod^1/2_{feature}_{other_feature}'
+                    df[new_feature] = np.sqrt(np.abs(df[feature] * df[other_feature]))
+                elif interact == 'prod^1/3':    # Product cube root
+                    new_feature = f'prod^1/3_{feature}_{other_feature}'
+                    df[new_feature] = np.cbrt(df[feature] * df[other_feature])
+
+                # Logarithmic and exponential interactions
+                elif interact == 'log_inter':   # Logarithmic interaction
+                    new_feature = f'log_inter_{feature}_{other_feature}'
+                    df[new_feature] = np.log(df[feature] + 1) * np.log(df[other_feature] + 1)
+                elif interact == 'exp_inter':   # Exponential interaction
+                    new_feature = f'exp_inter_{feature}_{other_feature}'
+                    df[new_feature] = np.exp(df[feature]) * np.exp(df[other_feature])
+
+                # Statistical interactions
+                elif interact == 'mean_diff':   # Mean difference
+                    new_feature = f'mean_diff_{feature}_{other_feature}'
+                    df[new_feature] = df[feature] - df[[feature, other_feature]].mean(axis=1)
+                elif interact == 'mean_ratio':  # Mean ratio
+                    new_feature = f'mean_ratio_{feature}_{other_feature}'
+                    df[new_feature] = df[feature] / df[[feature, other_feature]].mean(axis=1)
+
+                if verbose:
+                    summary_str = f'Created new feature: {new_feature} ({interact} interaction)'
+                    action_summary.append(summary_str)
+                    print(summary_str)
+                    if (single_feat_interactions_only == 1) and (feature_combinations[0][1] != None):
+                        summary_str_2 = f'Created new feature: {new_feature_2} ({interact} interaction)'
+                        action_summary.append(summary_str_2)
+                        print(summary_str_2)
+
+        # Drop original features if user specifies
+        if not preserve_features:
+            if verbose:
+                drop_str = f'Dropping original features from DataFrame:\n{features_list}'
+                action_summary.append(drop_str)
+                print(drop_str)
+            df.drop(columns=features_list, inplace=True)
+
+    # Closing verbosity
+    if verbose:
+        iter_input = 0
+        while True:
+            if iter_input == 0:
+                input2 = input("\nOperations complete. Would you like an action summary? (Y/N): ")
+            elif iter_input > 0:
+                input2 = input("-> ")
+
+            if input2.lower() == 'y':
+                print("\nThe following actions were performed by build_interactions():")
+                for action in action_summary:
+                    print(action)
+                break
+            elif input2.lower() == 'n':
+                break
             else:
-                return ['scatterplot_with_hue']
+                print("Invlid input. Please enter either 'Y' or 'N'.")
+                iter_input += 1
+    if verbose:
+        print('-' * 50)  # Visual separator
+        print('Feature interaction complete. Returning modified dataframe.')
+        print('-' * 50)  # Visual separator
 
-        return []
+    return df
 
-    def select_plot_type(plot_types):
-        """Allow user to select a plot type from available options."""
-        print('\nAvailable plot types for the selected features:')
-        for idx, plot_type in enumerate(plot_types, 1):
-            print(f'{idx}. {plot_type}')
+# #-------New OOP-----------------------------------
 
-        while True:
-            try:
-                selection = input('\nSelect plot type (enter number): ')
-                idx = int(selection) - 1
+### Working through this has me thinking that there may be benefits to
+### handling the entire process of TADPREP through OOP, considering the
+### user's DataFrame will exist in a variety of states throughout.
 
-                if 0 <= idx < len(plot_types):
-                    return plot_types[idx]
-                else:
-                    print(f'Please enter a number between 1 and {len(plot_types)}.')
+class PlotHandler:
+    def __init__(self, palette: str = 'colorblind'):
 
-            except ValueError:
-                print('Please enter a valid number.')
+        self.palette = palette
+        sns.set_palette(self.palette)
 
-    def select_hue(selected_features):
-        """Allow user to select which feature to use for color differentiation."""
-        print('\nFor this plot type, one feature must be used for color differentiation (hue).')
-        print('Which feature would you like to use for hue?')
+        # Triple-layer defaultdict() allows for automatic data structuring
+        # when we expect all plots to be stored in the same way
+        self.plot_storage = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
 
-        for idx, (feature, feature_type) in enumerate(selected_features, 1):
-            print(f'{idx}. {feature} ({feature_type})')
+        # Basic structure for data snapshot storage
+        # {
+        #     'col_name': {
+        #         'plot_type': {
+        #             'plot_num': [int],
+        #             'data': [pd.Series] (pd.Series will contain indexing info)
+        #         }
+        #     }
+        # }
 
-        while True:
-            try:
-                selection = input('\nSelect hue feature (enter number): ')
-                idx = int(selection) - 1
+    def det_plot_type(self, data: pd.DataFrame | pd.Series, col_name: str) -> tuple:
+        """
+        Determines an "appropriate" plot type for a set of data (pd.Series)
+        based on the pandas dtype of the user's DataFrame column.
 
-                if 0 <= idx < len(selected_features):
-                    return idx  # Return the index of the selected hue feature
-                else:
-                    print(f'Please enter a number between 1 and {len(selected_features)}.')
+        Args:
+            col_name (str): Specified DataFrame column to determine plotting info for.
 
-            except ValueError:
-                print('Please enter a valid number.')
+        Raises:
+            ValueError: _description_
 
-    def create_plot(selected_features, plot_type):
-        """Create and display the selected plot type."""
-        feature_names = [feature_name for feature_name, _ in selected_features]
+        Returns:
+            plot_type (tuple (pd.dtype, str)): A tuple containing dtype and its corresponding "plot type" string (hist/line/etc.).
+        """
 
-        plt.figure(figsize=(12, 8))
+        #####################################
+        # This method may not be necessary, but is currently a placeholder method in the case
+        # we decide to separate plot-type determination from method-arg-input.
+        #####################################
 
-        # Handle different plot types
-        if plot_type == 'histogram':
-            sns.histplot(data=df, x=feature_names[0], kde=True)
-            plt.title(f'Histogram of {feature_names[0]}')
+        # Determine if input is pd.DataFrame or pd.Series
+        if isinstance(data, pd.DataFrame):
+            dtype = data[col_name].dtype
+        elif isinstance(data, pd.Series):
+            dtype = data.dtype
+        # Empty str variable, will be re-valued by this method
+        plot_type = ""
 
-        elif plot_type == 'boxplot' and len(feature_names) == 1:
-            sns.boxplot(data=df, y=feature_names[0])
-            plt.title(f'Box Plot of {feature_names[0]}')
+        if pd.api.types.is_numeric_dtype(dtype):
+            plot_type = 'hist'  # Define 'hist' as plot type for numeric data
 
-        elif plot_type == 'violinplot' and len(feature_names) == 1:
-            sns.violinplot(data=df, y=feature_names[0])
-            plt.title(f'Violin Plot of {feature_names[0]}')
+        elif pd.api.types.is_categorical_dtype(dtype) or pd.api.types.is_object_dtype(dtype):
+            plot_type = 'box'  # Define 'box' as plot type for numeric data
 
-        elif plot_type == 'countplot':
-            sns.countplot(data=df, x=feature_names[0])
-            plt.title(f'Count Plot of {feature_names[0]}')
-            plt.xticks(rotation=45)
-
-        elif plot_type == 'barplot' and len(feature_names) == 1:
-            sns.barplot(data=df, x=feature_names[0])
-            plt.title(f'Bar Plot of {feature_names[0]}')
-            plt.xticks(rotation=45)
-
-        elif plot_type == 'pieplot':
-            value_counts = df[feature_names[0]].value_counts()
-            plt.pie(value_counts, labels=value_counts.index, autopct='%1.1f%%')
-            plt.title(f'Pie Chart of {feature_names[0]}')
-
-        elif plot_type == 'lineplot' and len(feature_names) == 1:
-            sns.lineplot(data=df, x=df.index, y=feature_names[0])
-            plt.title(f'Line Plot of {feature_names[0]}')
-
-        elif plot_type == 'scatterplot' and len(feature_names) == 2:
-            sns.scatterplot(data=df, x=feature_names[0], y=feature_names[1])
-            plt.title(f'Scatter Plot of {feature_names[1]} vs {feature_names[0]}')
-
-        elif plot_type == 'lineplot' and len(feature_names) == 2:
-            sns.lineplot(data=df, x=feature_names[0], y=feature_names[1])
-            plt.title(f'Line Plot of {feature_names[1]} vs {feature_names[0]}')
-
-        elif plot_type == 'heatmap' and len(feature_names) == 2:
-            crosstab = pd.crosstab(df[feature_names[0]], df[feature_names[1]])
-            sns.heatmap(crosstab, annot=True, cmap='YlGnBu', fmt='g')
-            plt.title(f'Heatmap of {feature_names[1]} vs {feature_names[0]}')
-
-        elif plot_type == 'barplot' and len(feature_names) == 2:
-            # Determine which feature is categorical
-            cat_idx = 0 if selected_features[0][1] == 'categorical' else 1
-            num_idx = 1 - cat_idx
-            sns.barplot(data=df, x=feature_names[cat_idx], y=feature_names[num_idx])
-            plt.title(f'Bar Plot of {feature_names[num_idx]} by {feature_names[cat_idx]}')
-            plt.xticks(rotation=45)
-
-        elif plot_type == 'boxplot' and len(feature_names) == 2:
-            # Determine which feature is categorical
-            cat_idx = 0 if selected_features[0][1] == 'categorical' else 1
-            num_idx = 1 - cat_idx
-            sns.boxplot(data=df, x=feature_names[cat_idx], y=feature_names[num_idx])
-            plt.title(f'Box Plot of {feature_names[num_idx]} by {feature_names[cat_idx]}')
-            plt.xticks(rotation=45)
-
-        elif plot_type == 'violinplot' and len(feature_names) == 2:
-            # Determine which feature is categorical
-            cat_idx = 0 if selected_features[0][1] == 'categorical' else 1
-            num_idx = 1 - cat_idx
-            sns.violinplot(data=df, x=feature_names[cat_idx], y=feature_names[num_idx])
-            plt.title(f'Violin Plot of {feature_names[num_idx]} by {feature_names[cat_idx]}')
-            plt.xticks(rotation=45)
-
-        elif 'with_hue' in plot_type and len(feature_names) == 3:
-            # Get hue feature index
-            hue_idx = select_hue(selected_features)
-
-            # Remaining features for x and y
-            non_hue_indices = [i for i in range(3) if i != hue_idx]
-            x_idx, y_idx = non_hue_indices
-
-            if plot_type == 'scatterplot_with_hue':
-                sns.scatterplot(data=df, x=feature_names[x_idx], y=feature_names[y_idx],
-                                hue=feature_names[hue_idx])
-                plt.title(
-                    f'Scatter Plot of {feature_names[y_idx]} vs {feature_names[x_idx]} by {feature_names[hue_idx]}')
-
-            elif plot_type == 'lineplot_with_hue':
-                sns.lineplot(data=df, x=feature_names[x_idx], y=feature_names[y_idx],
-                             hue=feature_names[hue_idx])
-                plt.title(f'Line Plot of {feature_names[y_idx]} vs {feature_names[x_idx]} by {feature_names[hue_idx]}')
-
-        elif plot_type == 'pairplot':
-            # Close current figure first
-            plt.close()
-
-            # Create pairplot (this will generate its own figure)
-            sns.pairplot(df[feature_names], diag_kind='kde')
-            plt.suptitle('Pairplot of Selected Features', y=1.02)
+        elif pd.api.types.is_datetime64_any_dtype(dtype):
+            # '.is_datetime64_any_dtype' allows for TZ-aware DataFrames
+            plot_type = 'line'  # Define 'line' for time-series data
 
         else:
-            print(f'Plot type {plot_type} not implemented for the selected feature combination.')
-            return False
+            plot_type = 'scatter'  # For all other types, assume mixed data and assign 'scatter'
 
+        return (dtype, plot_type)
+
+    def plot(self, df: pd.DataFrame, col_name: str, plot_type: str):
+        """
+        Create a specified Seaborn plot for a specified pandas DataFrame column.
+        Copies current data state to PlotHandler class instance self.plot_storage.
+
+        Args:
+            data (pd.DataFrame): DataFrame to reference.
+            col_name (str): Name of DataFrame column for plotting and archiving.
+            plot_type (str): Type of plot to create (hist, box, line, scatter).
+
+        Raises:
+            ValueError: _description_
+        """
+
+        data = df[col_name]
+
+        ### LIKELY UNNECESSARY if giving user control over method arg
+        # # Check dtype of pd.Series for indexing in self.plot_storage
+        # plot_type = self.det_plot_type(data, col_name)[1]
+
+        # Create 'plot_num' list with first value 1 if not already present
+        if not self.plot_storage[col_name][plot_type]['plot_num']:
+            self.plot_storage[col_name][plot_type]['plot_num'].append(1)
+        # Otherwise, append the next number in the sequence
+        else:
+            self.plot_storage[col_name][plot_type]['plot_num'].append(
+                self.plot_storage[col_name][plot_type]['plot_num'][-1] + 1
+            )
+
+        self.plot_storage[col_name][plot_type]['data'].append(data)
+
+        if plot_type == 'hist':
+            plot = sns.histplot(data=data, kde=True)
+            plot.set_title(f"Histogram for '{col_name}'")
+            plt.show()  # Assume viz is desired on creation for now
+
+            return
+
+        elif plot_type == 'box':
+            plot = sns.boxplot(data=data)
+            plot.set_title(f"Box Plot for '{col_name}'")
+            plt.show()  # Assume viz is desired on creation for now
+
+            return
+
+        elif plot_type == 'line':
+            plot = sns.lineplot(data=data)
+            plot.set_title(f"Line Plot for '{col_name}'")
+            plt.show()  # Assume viz is desired on creation for now
+
+            return
+
+        elif plot_type == 'scatter':
+            plot = sns.scatterplot(data=data)
+            plot.set_title(f"Scatter Plot for '{col_name}'")
+            plt.show()  # Assume viz is desired on creation for now
+
+            return
+
+        else:
+            print(f'Unsupported plot type: {plot_type}')
+            return
+
+    def recall_plot(self, col_name: str, plot_type: str):
+        """
+        Recall a previously-created stored plot for a given dtype and DataFrame column.
+
+        Args:
+            dtype (_type_): dtype to be fetched from defaultdict.
+            col_name (str): Name of DataFrame column for fetching from defaultdict.
+
+        Raises:
+            ValueError: _description_
+        """
+        # Could be implemented to fetch by plot number, but currently fetches most recent plot
+        if not self.plot_storage[col_name][plot_type]:
+            print(f"No plot found for '{col_name}' with dtype '{plot_type}'")
+        else:
+            # Fetch data for single most recent plot of specified dtype and col_name
+            stored_data = self.plot_storage[col_name][plot_type]['data'][-1]
+            stored_order = self.plot_storage[col_name][plot_type]['plot_num'][-1]
+
+            print(f"Redrawing {plot_type} plot #{stored_order} for '{col_name}'")
+
+            if plot_type == 'hist':
+                plot = sns.histplot(data=stored_data, kde=True)
+                plot.set_title(f"Histogram #{stored_order} for '{col_name}'")
+            elif plot_type == 'box':
+                plot = sns.boxplot(data=stored_data)
+                plot.set_title(f"Box Plot #{stored_order} for '{col_name}'")
+            elif plot_type == 'line':
+                plot = sns.lineplot(data=stored_data)
+                plot.set_title(f"Line Plot #{stored_order} for '{col_name}'")
+            elif plot_type == 'scatter':
+                plot = sns.scatterplot(data=stored_data)
+                plot.set_title(f"Scatter Plot #{stored_order} for '{col_name}'")
+            plt.show()
+
+        return
+
+    def compare_plots(self, col_name: str):
+        """
+        Compare all stored plots for a given column.
+
+        Args:
+            col_name (str): Name of DataFrame column for which plots will be compared.
+
+        Raises:
+            ValueError: _description_
+        """
+
+        types_list = ['hist', 'box', 'line', 'scatter']
+
+        # Determine the number of rows and columns for subplots
+        subplots_nrows = max(len(self.plot_storage[col_name][plot_type]['data']) for plot_type in types_list)
+
+        subplots_ncols = sum(1 for plot_type in types_list if self.plot_storage[col_name][plot_type]['data'])
+
+        # debug
+        print(f"nrows: {subplots_nrows}, ncols: {subplots_ncols}")
+
+        # Create subplots
+        fig, ax = plt.subplots(nrows=subplots_nrows,
+                               ncols=subplots_ncols,
+                               sharex=True
+                               )
+
+        # Ensure ax is always a 2D array for consistent indexing
+        if subplots_nrows == 1:
+            ax = [ax]  # Convert to a list for 1D case
+        if subplots_ncols == 1:
+            ax = [[a] for a in ax]  # Convert to a nested list for 2D case
+
+        # Iterate over columns (plot types)
+        for col, curr_plot_type in enumerate(types_list):
+            if curr_plot_type in self.plot_storage[col_name]:
+                # Iterate over rows (individual plots)
+                for row, data in enumerate(self.plot_storage[col_name][curr_plot_type]['data']):
+                    # Validate data presence
+                    if data.dropna().empty:
+                        print(f"No valid data available for {curr_plot_type} at position: {row, col}")
+                        continue
+
+                    ### BUG HERE: sns.histplot does not populate for 1st column in 2D .subplots() case
+                    print(f"Plotting {curr_plot_type} at position: {row, col}")
+                    if curr_plot_type == 'hist':
+                        sns.histplot(data=data, kde=True, ax=ax[row][col])
+                    elif curr_plot_type == 'box':
+                        sns.boxplot(data=data, ax=ax[row][col])
+                    elif curr_plot_type == 'line':
+                        sns.lineplot(data=data, ax=ax[row][col])
+                    elif curr_plot_type == 'scatter':
+                        sns.scatterplot(data=data, ax=ax[row][col])
+
+                    ax[row][col].set_title(f"{curr_plot_type.capitalize()} Plot {row + 1}")
+
+        fig.suptitle(f"Comparison of all plots for '{col_name}'")
         plt.tight_layout()
         plt.show()
-        return True
 
-    # Main plotting loop
-    while True:
-        # Get features to plot
-        selected_features = select_features()
-
-        # Get appropriate plot types
-        plot_types = get_appropriate_plot_types(selected_features)
-
-        if not plot_types:
-            print('No appropriate plot types found for the selected feature combination.')
-            continue
-
-        # Let user select plot type
-        plot_type = select_plot_type(plot_types)
-
-        # Create and display the plot
-        success = create_plot(selected_features, plot_type)
-
-        # Ask if user wants to continue plotting with appropriate context
-        if success:
-            if input('\nWould you like to create another plot? (Y/N): ').lower() != 'y':
-                break
-
-        else:
-            if input('\nWould you like to try with different features or another plot type? (Y/N): ').lower() != 'y':
-                break
-
-    print('Plotting complete.')
+        return
