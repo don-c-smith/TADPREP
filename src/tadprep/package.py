@@ -16,6 +16,7 @@ from .core.transforms import (
 )
 
 
+# DATAFRAME-LEVEL INFORMATION AND MANIPULATIONS
 def df_info(df: pd.DataFrame, verbose: bool = True) -> None:
     """
     Prints comprehensive information about a DataFrame's structure, contents, and potential data quality issues.
@@ -114,6 +115,43 @@ def reshape(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     return _reshape_core(df, verbose)
 
 
+def subset(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
+    """
+    Interactively subsets the input DataFrame according to user specification. Supports random sampling
+    (with or without a seed), stratified sampling, and time-based instance selection for timeseries data.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The DataFrame to be reshaped
+    verbose : bool, default=True
+        Controls whether detailed process information and methodological guidance is displayed
+
+    Returns
+    -------
+    pandas.DataFrame
+        The modified DataFrame as subset by the user's specifications
+
+    Examples
+    --------
+        >>> import pandas as pd
+        >>> import tadprep
+        >>> df = pd.DataFrame({'A': [1, 2, None], 'B': [4, 5, 6]})
+        >>> df_subset = tadprep.subset(df)  # Shows detailed status messages and guidance
+        >>> df_subset_quiet = tadprep.subset(df, verbose=False)  # Shows only necessary user prompts
+    """
+    # Ensure input is a Pandas dataframe
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError('Input must be a pandas DataFrame')
+
+    # Ensure dataframe is not empty
+    if df.empty:
+        raise ValueError('Input DataFrame is empty')
+
+    return _subset_core(df, verbose)
+
+
+# EXPLORATORY DATA ANALYSIS (EDA)
 def find_outliers(df: pd.DataFrame, method: str = 'iqr', threshold: float = None, verbose: bool = True) -> dict:
     """
     Detects outliers in numerical features of a DataFrame using a specified detection method.
@@ -210,8 +248,7 @@ def find_corrs(df: pd.DataFrame, method: str = 'pearson', threshold: float = 0.8
                     'abs_correlation': float  # Absolute correlation value
                 },
                 ...
-            ]
-        }
+            ]}
 
     Examples
     --------
@@ -241,30 +278,51 @@ def find_corrs(df: pd.DataFrame, method: str = 'pearson', threshold: float = 0.8
     return _find_corrs_core(df, method=method, threshold=threshold, verbose=verbose)
 
 
-def subset(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
+def make_plots(df: pd.DataFrame, features_to_plot: list[str] | None = None) -> None:
     """
-    Interactively subsets the input DataFrame according to user specification. Supports random sampling
-    (with or without a seed), stratified sampling, and time-based instance selection for timeseries data.
+    Interactively creates and displays plots for features in a DataFrame.
+
+    This function guides users through the process of creating feature-level plots
+    based on the data characteristics of selected features. It supports visualization
+    of numerical, categorical, and datetime features using appropriate plot types.
 
     Parameters
     ----------
     df : pandas.DataFrame
-        The DataFrame to be reshaped
-    verbose : bool, default=True
-        Controls whether detailed process information and methodological guidance is displayed
+        The DataFrame containing features to plot.
+    features_to_plot : list[str] | None, default=None
+        Optional list of specific features to consider for plotting. If None, the
+        function will use all features in the DataFrame.
 
     Returns
     -------
-    pandas.DataFrame
-        The modified DataFrame as subset by the user's specifications
+    None
+        This function displays plots but does not return any values.
 
     Examples
     --------
-        >>> import pandas as pd
-        >>> import tadprep
-        >>> df = pd.DataFrame({'A': [1, 2, None], 'B': [4, 5, 6]})
-        >>> df_subset = tadprep.subset(df)  # Shows detailed status messages and guidance
-        >>> df_subset_quiet = tadprep.subset(df, verbose=False)  # Shows only necessary user prompts
+    >>> import pandas as pd
+    >>> import tadprep as tp
+    >>> df = pd.DataFrame({
+    ...     'A': [1, 2, 3, 4, 5],
+    ...     'B': ['x', 'y', 'z', 'z', 'y'],
+    ...     'C': [0.1, 0.2, 0.3, 0.4, 0.5]
+    ... })
+    >>> # Plot using all available features
+    >>> tp.make_plots(df)
+    >>>
+    >>> # Plot using only specified features
+    >>> tp.make_plots(df, features_to_plot=['A', 'B'])
+
+    Notes
+    -----
+    The function supports various plot types including:
+    - For single features: histograms, box plots, violin plots, count plots, bar plots
+    - For two features: scatter plots, line plots, heat maps, bar plots
+    - For three features: scatter plots with hue, line plots with hue, pair plots
+
+    Plot types are suggested based on feature data types (numerical, categorical, datetime),
+    and the user can select which plot type to create.
     """
     # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
@@ -274,9 +332,19 @@ def subset(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     if df.empty:
         raise ValueError('Input DataFrame is empty')
 
-    return _subset_core(df, verbose)
+    # Validate features_to_plot if provided
+    if features_to_plot is not None:
+        if not isinstance(features_to_plot, list):
+            raise TypeError('features_to_plot must be a list of strings')
+
+        if not all(isinstance(col, str) for col in features_to_plot):
+            raise TypeError('All feature names in features_to_plot must be strings')
+
+    # Call the core function
+    _make_plots_core(df, features_to_plot=features_to_plot)
 
 
+# FEATURE-LEVEL INFORMATION AND MANIPULATIONS
 def rename_and_tag(df: pd.DataFrame, verbose: bool = True, tag_features: bool = False) -> pd.DataFrame:
     """
     Interactively renames features and allows user to tag them as ordinal or target features, if desired.
@@ -715,69 +783,3 @@ def extract_datetime(
         datetime_features=datetime_features,
         verbose=verbose,
         preserve_features=preserve_features)
-
-
-def make_plots(df: pd.DataFrame, features_to_plot: list[str] | None = None) -> None:
-    """
-    Interactively creates and displays plots for features in a DataFrame.
-
-    This function guides users through the process of creating feature-level plots
-    based on the data characteristics of selected features. It supports visualization
-    of numerical, categorical, and datetime features using appropriate plot types.
-
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        The DataFrame containing features to plot.
-    features_to_plot : list[str] | None, default=None
-        Optional list of specific features to consider for plotting. If None, the
-        function will use all features in the DataFrame.
-
-    Returns
-    -------
-    None
-        This function displays plots but does not return any values.
-
-    Examples
-    --------
-    >>> import pandas as pd
-    >>> import tadprep as tp
-    >>> df = pd.DataFrame({
-    ...     'A': [1, 2, 3, 4, 5],
-    ...     'B': ['x', 'y', 'z', 'z', 'y'],
-    ...     'C': [0.1, 0.2, 0.3, 0.4, 0.5]
-    ... })
-    >>> # Plot using all available features
-    >>> tp.make_plots(df)
-    >>>
-    >>> # Plot using only specified features
-    >>> tp.make_plots(df, features_to_plot=['A', 'B'])
-
-    Notes
-    -----
-    The function supports various plot types including:
-    - For single features: histograms, box plots, violin plots, count plots, bar plots
-    - For two features: scatter plots, line plots, heat maps, bar plots
-    - For three features: scatter plots with hue, line plots with hue, pair plots
-
-    Plot types are suggested based on feature data types (numerical, categorical, datetime),
-    and the user can select which plot type to create.
-    """
-    # Ensure input is a Pandas dataframe
-    if not isinstance(df, pd.DataFrame):
-        raise TypeError('Input must be a pandas DataFrame')
-
-    # Ensure dataframe is not empty
-    if df.empty:
-        raise ValueError('Input DataFrame is empty')
-
-    # Validate features_to_plot if provided
-    if features_to_plot is not None:
-        if not isinstance(features_to_plot, list):
-            raise TypeError('features_to_plot must be a list of strings')
-
-        if not all(isinstance(col, str) for col in features_to_plot):
-            raise TypeError('All feature names in features_to_plot must be strings')
-
-    # Call the core function
-    _make_plots_core(df, features_to_plot=features_to_plot)
