@@ -4750,7 +4750,6 @@ def _build_interactions_core(
         interact_types: list[str] | None = None,
         verbose: bool = True,
         preserve_features: bool = True
-        # max_features: int | None = None
 ) -> pd.DataFrame:
     """
     Core function to build interaction terms between specified features in a DataFrame.
@@ -4763,7 +4762,6 @@ def _build_interactions_core(
         interact_types (list[str]): List of interaction types to apply.
         verbose (bool): Whether to print detailed information about operations. Defaults to True.
         preserve_features (bool): Whether to retain original features in the DataFrame. Defaults to True.
-        max_features (int): Optional maximum number of interaction features to create.
 
     Returns:
         pd.DataFrame: DataFrame with interaction terms appended and user-specified columns removed.
@@ -4782,9 +4780,8 @@ def _build_interactions_core(
         print('Beginning feature interaction process.')
         print('-' * 50)  # Visual separator
 
-    # Remove dupes from 'interact_types' if they exists
-    # Replace "categorical calls" if included
-    # and preserve order:
+    # Remove dupes from 'interact_types' if they exist
+    # Replace "categorical calls" if included and preserve order:
     def clean_interact_types(interact_types: list[str]):
         # Replace "categorical calls" if included, including dupes
         if 'arithmetic' in interact_types:
@@ -4822,7 +4819,6 @@ def _build_interactions_core(
 
     if interact_types:
         interact_types = clean_interact_types(interact_types)
-
 
     # Check for valid interaction categories or types
     valid_types = ['arithmetic',                        # Categorical interaction calls
@@ -4920,30 +4916,35 @@ def _build_interactions_core(
     # Clean up runtime user inputs
     interact_types = clean_interact_types(interact_types)
 
-    if features_list and len(features_list) == 1 and not set(interact_types).issubset(set(['^2', '^3', '^1/2', '^1/3', 'e^x'])):
-        print("Only 1 feature provided and multi-feature interaction types specified. INVALID OPERATION SET. Aborting method. Input DataFrame not modified.")
+    if (features_list and len(features_list) == 1
+            and not set(interact_types).issubset({'^2', '^3', '^1/2', '^1/3', 'e^x'})):
+        print("Only 1 feature provided and multi-feature interaction types specified. INVALID OPERATION SET. "
+              "Aborting method. Input DataFrame not modified.")
         return df
     
     # Record of actions for 'verbose' state
     action_summary = []
 
-    ## Handle error from incorrect 'f1', 'f2' arg input
+    # Handle error from incorrect 'f1', 'f2' arg input
     if f2 and not f1:
-        print("Only 'f2' feature provided for TADPREP 'Focused' _build_interactions method. Please provide only 'f1' if single-column interactions desired.")
+        print("Only 'f2' feature provided for TADPREP 'Focused' _build_interactions method. "
+              "Please provide only 'f1' if single-column interactions desired.")
         return df
 
-    ### "focused" interaction creation paradigm
-    ### i.e. specific interactions between two specifically-provided features
+    # "Focused" interaction creation paradigm
+    # i.e. specific interactions between two specifically-provided features
     if f1:
         if not f2:
-            print("'f2' feature not provided for multi-column interaction. Aborting method. Input DataFrame not modified.")
+            print("'f2' feature not provided for multi-column interaction. Aborting method. "
+                  "Input DataFrame not modified.")
             return df
-        if set(interact_types).issubset(set(['^2', '^3', '^1/2', '^1/3', 'e^x'])):
-            print("WARNING: All provided interact_types are single-column interactions. Only f1-argument-sourced interactions will be created in 'Focused' paradigm.")
+        if set(interact_types).issubset({'^2', '^3', '^1/2', '^1/3', 'e^x'}):
+            print("WARNING: All provided interact_types are single-column interactions. "
+                  "Only f1-argument-sourced interactions will be created in 'Focused' paradigm.")
         # Perform interaction term creation
         for interact in interact_types:
             
-            ## Arithmetic interactions
+            # Arithmetic interactions
             if interact == '+':                     # Sum
                 new_feature = f'{f1}_+_{f2}'
                 df[new_feature] = df[f1] + df[f2]
@@ -4960,9 +4961,10 @@ def _build_interactions_core(
                 df[new_feature] = df[new_feature].replace([np.inf, -np.inf], np.nan)
 
                 if verbose:
-                    print('***Div-by-zero errors are replaced with NaN. Take care to handle these and propagated-NaNs in your analysis.***')
+                    print('***Div-by-zero errors are replaced with NaN. '
+                          'Take care to handle these and propagated-NaNs in your analysis.***')
 
-            ## Exponential interactions
+            # Exponential interactions
             elif interact == '^2':                  # Square
                 new_feature = f'{f1}^2'
                 df[new_feature] = df[f1] ** 2
@@ -4979,7 +4981,7 @@ def _build_interactions_core(
                 new_feature = f'e^{f1}'
                 df[new_feature] = np.exp(df[f1])
 
-            ## Distance interactions
+            # Distance interactions
             elif interact == 'magnitude':           # Magnitude
                 new_feature = f'magnitude_{f1}_{f2}'
                 df[new_feature] = np.sqrt(df[f1] ** 2 + df[f2] ** 2)
@@ -4990,7 +4992,7 @@ def _build_interactions_core(
                 new_feature = f'magdiff_{f1}_{f2}'
                 df[new_feature] = np.abs(df[f1] - df[f2])
             
-            ## Polynomial and other roots
+            # Polynomial and other roots
             elif interact == 'poly':                # Polynomial
                 new_feature = f'poly_{f1}_{f2}'
                 df[new_feature] = df[f1] * df[f2] + df[f1] ** 2 + df[f2] ** 2
@@ -5001,7 +5003,7 @@ def _build_interactions_core(
                 new_feature = f'prod^1/3_{f1}_{f2}'
                 df[new_feature] = np.cbrt(df[f1] * df[f2])
             
-            ## Logarithmic and exponential interactions
+            # Logarithmic and exponential interactions
             elif interact == 'log_inter':           # Logarithmic interaction
                 new_feature = f'log_inter_{f1}_{f2}'
                 df[new_feature] = np.log(df[f1] + 1) * np.log(df[f2] + 1)
@@ -5009,7 +5011,7 @@ def _build_interactions_core(
                 new_feature = f'exp_inter_{f1}_{f2}'
                 df[new_feature] = np.exp(df[f1]) * np.exp(df[f2])
 
-            ## Statistical interactions
+            # Statistical interactions
             elif interact == 'mean_diff':           # Mean difference
                 new_feature = f'mean_diff_{f1}_{f2}'
                 df[new_feature] = df[f1] - df[[f1, f2]].mean(axis=1)
@@ -5029,8 +5031,7 @@ def _build_interactions_core(
                 print(drop_str)
             df.drop(columns=[f1,f2], inplace=True)
 
-    ### "exploratory" interaction creation paradigm
-    ### i.e. all possible interactions between all features in provided list
+    # "Exploratory" interaction creation paradigm, i.e. all possible interactions between all features in provided list
     if features_list:
         # Perform interaction term creation with itertools.combinations
         if len(features_list) == 1:
@@ -5043,7 +5044,7 @@ def _build_interactions_core(
         # Create flag for "only single-feature interactions present"
         single_feat_interactions_only = 0
         # Adjust if necessary
-        if set(interact_types).issubset(set(['^2', '^3', '^1/2', '^1/3', 'e^x'])):
+        if set(interact_types).issubset({'^2', '^3', '^1/2', '^1/3', 'e^x'}):
             single_feat_interactions_only = 1
             
         for feature, other_feature in feature_combinations:
@@ -5066,42 +5067,43 @@ def _build_interactions_core(
                     df[new_feature] = df[new_feature].replace([np.inf, -np.inf], np.nan)
                     
                     if verbose:
-                        print('***Div-by-zero errors are replaced with NaN. Take care to handle these and propagated-NaNs in your analysis.***')
+                        print('***Div-by-zero errors are replaced with NaN. '
+                              'Take care to handle these and propagated-NaNs in your analysis.***')
 
                 # Exponential interactions
                 elif interact == '^2':          # Square
                     new_feature = f'{feature}^2'
                     if new_feature not in df.columns:
                         df[new_feature] = df[feature] ** 2
-                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
+                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] is not None):
                         new_feature_2 = f'{other_feature}^2'
                         df[new_feature_2] = df[other_feature] ** 2
                 elif interact == '^3':          # Cube
                     new_feature = f'{feature}^3'
                     if new_feature not in df.columns:
                         df[new_feature] = df[feature] ** 3
-                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
+                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] is not None):
                         new_feature_2 = f'{other_feature}^3'
                         df[new_feature_2] = df[other_feature] ** 3
                 elif interact == '^1/2':        # Square root
                     new_feature = f'{feature}^1/2'
                     if new_feature not in df.columns:
                         df[new_feature] = np.sqrt(df[feature])
-                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
+                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] is not None):
                         new_feature_2 = f'{other_feature}^1/2'
                         df[new_feature_2] = np.sqrt(df[other_feature])
                 elif interact == '^1/3':        # Cube root
                     new_feature = f'{feature}^1/3'
                     if new_feature not in df.columns:
                         df[new_feature] = np.cbrt(df[feature])
-                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
+                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] is not None):
                         new_feature_2 = f'{other_feature}^1/3'
                         df[new_feature_2] = np.cbrt(df[other_feature])
                 elif interact == 'e^x':         # Exponential
                     new_feature = f'e^{feature}'
                     if new_feature not in df.columns:
                         df[new_feature] = np.exp(df[feature])
-                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
+                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] is not None):
                         new_feature_2 = f'e^{other_feature}'
                         df[new_feature_2] = np.exp(df[other_feature])
 
@@ -5147,7 +5149,7 @@ def _build_interactions_core(
                     summary_str = f'Created new feature: {new_feature} ({interact} interaction)'
                     action_summary.append(summary_str)
                     print(summary_str)
-                    if (single_feat_interactions_only == 1) and (feature_combinations[0][1] != None):
+                    if (single_feat_interactions_only == 1) and (feature_combinations[0][1] is not None):
                         summary_str_2 = f'Created new feature: {new_feature_2} ({interact} interaction)'
                         action_summary.append(summary_str_2)
                         print(summary_str_2)
