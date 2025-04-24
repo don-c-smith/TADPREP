@@ -4723,7 +4723,7 @@ def _extract_datetime_core(
 
                 extracted_cols.append(new_col)
                 if verbose:
-                    print(f"Created {new_col}")
+                    print(f'Created {new_col}')
 
             except (AttributeError, ValueError, TypeError) as exc:
                 print(f'Could not extract {component} from {col}: {str(exc)}')
