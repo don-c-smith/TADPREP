@@ -15,7 +15,8 @@ from .transforms import (
     _scale_core,
     _transform_core,
     _extract_datetime_core,
-    _make_plots_core
+    _make_plots_core,
+    _build_interactions_core
 )
 
 __all__ = [
@@ -33,5 +34,6 @@ __all__ = [
     '_scale_core',
     '_transform_core',
     '_extract_datetime_core',
-    '_make_plots_core'
+    '_make_plots_core',
+    '_build_interactions_core'
 ]
