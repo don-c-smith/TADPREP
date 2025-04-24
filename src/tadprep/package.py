@@ -783,3 +783,103 @@ def extract_datetime(
         datetime_features=datetime_features,
         verbose=verbose,
         preserve_features=preserve_features)
+
+
+def build_interactions(
+    df: pd.DataFrame,
+    f1: str | None = None,
+    f2: str | None = None,
+    features_list: list[str] | None = None,
+    interact_types: list[str] | None = None,
+    verbose: bool = True,
+    preserve_features: bool = True
+) -> pd.DataFrame:
+    """
+    Creates interaction terms between specified features in a DataFrame.
+
+    Supports two paradigms:
+    - Focused: Create specific interactions between two features (f1 and f2)
+    - Exploratory: Create all possible interactions between features in features_list
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The DataFrame containing features to create interactions from.
+    f1 : str | None, default=None
+        First feature for focused interactions.
+    f2 : str | None, default=None
+        Second feature for focused interactions.
+    features_list : list[str] | None, default=None
+        List of features for exploratory interactions.
+    interact_types : list[str] | None, default=None
+        List of interaction types to apply. If None, user will be prompted.
+    verbose : bool, default=True
+        Whether to display detailed information about the process.
+    preserve_features : bool, default=True
+        Whether to keep original features in the DataFrame.
+
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame with interaction terms appended.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import tadprep as tp
+    >>> df = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
+    >>> # Focused paradigm
+    >>> df_interact = tp.build_interactions(df, f1='A', f2='B', interact_types=['+', '*'])
+    >>> # Exploratory paradigm
+    >>> df_interact = tp.build_interactions(df, features_list=['A', 'B'], interact_types=['+', '*'])
+    """
+    # Ensure input is a Pandas dataframe
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError('Input must be a pandas DataFrame')
+
+    # Ensure dataframe is not empty
+    if df.empty:
+        raise ValueError('Input DataFrame is empty')
+
+    # Validate features_list if provided
+    if features_list is not None:
+        if not isinstance(features_list, list):
+            raise TypeError('features_list must be a list of strings')
+
+        if not all(isinstance(col, str) for col in features_list):
+            raise TypeError('All feature names in features_list must be strings')
+
+        if not all(col in df.columns for col in features_list):
+            missing = [col for col in features_list if col not in df.columns]
+            raise ValueError(f'Features not found in DataFrame: {missing}')
+
+    # Validate f1 and f2 if provided
+    if f1 is not None:
+        if not isinstance(f1, str):
+            raise TypeError('f1 must be a string')
+        if f1 not in df.columns:
+            raise ValueError(f'Feature f1="{f1}" not found in DataFrame')
+
+    if f2 is not None:
+        if not isinstance(f2, str):
+            raise TypeError('f2 must be a string')
+        if f2 not in df.columns:
+            raise ValueError(f'Feature f2="{f2}" not found in DataFrame')
+
+    # Validate interact_types if provided
+    if interact_types is not None:
+        if not isinstance(interact_types, list):
+            raise TypeError('interact_types must be a list of strings')
+
+        if not all(isinstance(t, str) for t in interact_types):
+            raise TypeError('All interaction types must be strings')
+
+    return _build_interactions_core(
+        df,
+        f1=f1,
+        f2=f2,
+        features_list=features_list,
+        interact_types=interact_types,
+        verbose=verbose,
+        preserve_features=preserve_features
+    )
