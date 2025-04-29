@@ -5,4 +5,27 @@ import tadprep as tp
 # Load test data
 df = pd.read_csv(r'C:\Users\doncs\Documents\GitHub\TADPREP\data\river_data.csv')
 # Print check
-print(df)
+# print(df)
+
+'''
+Testing the df_info method:
+This method prints comprehensive information about a DataFrame's structure, contents, and potential data quality issues.
+Parameters: verbose (bool, default=True) 
+    - Controls whether detailed feature information and data quality checks are displayed
+Returns: None
+'''
+# Test non-verbose mode first
+tp.df_info(df, verbose=False)
+
+# Test verbose mode
+tp.df_info(df, verbose=True)
+
+'''
+Questions:
+- Is the name of this method appropriate?
+- Does it do what a reasonable person would expect it to do?
+- Are we missing major capabilities?
+- Are there extraneous capabilities?
+- Are all parameters/modes necessary and/or appropriate?
+- What problems or needed changes were identified? 
+'''
