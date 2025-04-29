@@ -18,7 +18,7 @@ Returns: None
 tp.df_info(df, verbose=False)
 
 # Test verbose mode
-tp.df_info(df, verbose=True)
+# tp.df_info(df, verbose=True)
 
 '''
 Questions:
