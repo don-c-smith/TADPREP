@@ -24,8 +24,8 @@ tp.df_info(df, verbose=True)
 Questions:
 - Is the name of this method appropriate?
 - Does it do what a reasonable person would expect it to do?
-- Are we missing major capabilities?
-- Are there extraneous capabilities?
+- Are we missing any major capabilities?
+- Are there extraneous capabilities present in the method?
 - Are all parameters/modes necessary and/or appropriate?
 - What problems or needed changes were identified? 
 '''
