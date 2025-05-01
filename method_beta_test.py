@@ -127,7 +127,7 @@ Returns: A dictionary containing outlier information with summary and feature-sp
 Questions:
 - Is the name of this method appropriate?
 - Does it do what a reasonable person would expect it to do?
-- Are we missing any major capabilities? Is this all the subset capacity we usefully need?
+- Are we missing any major capabilities? Is this all the outlier detection capacity we usefully need?
 - Are there extraneous capabilities present in the method?
 - Are all parameters/modes necessary and/or appropriate?
 - What problems or needed changes were identified? 
