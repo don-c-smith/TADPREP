@@ -16,7 +16,7 @@ Parameters: verbose (bool, default=True)
 Returns: None
 '''
 # Test non-verbose mode first
-tp.df_info(df, verbose=False)
+# tp.df_info(df, verbose=False)
 
 # Test verbose mode
 # tp.df_info(df, verbose=True)
@@ -41,7 +41,7 @@ Parameters: verbose (bool, default=True)
 Returns: None
 '''
 # Test non-verbose mode first
-tp.reshape(df, verbose=False)
+# tp.reshape(df, verbose=False)
 
 # Test verbose mode
 # tp.reshape(df, verbose=True)
@@ -66,7 +66,7 @@ Parameters: verbose (bool, default=True)
 Returns: The modified DataFrame as subset by the user's specifications
 '''
 # Test non-verbose mode first
-df_subset = tp.subset(df, verbose=False)
+# df_subset = tp.subset(df, verbose=False)
 
 # Test verbose mode
 # df_subset = tp.subset(df, verbose=True)
@@ -108,7 +108,7 @@ verbose : bool, default=True
 Returns: A dictionary containing outlier information with summary and feature-specific details
 '''
 # Test default mode first
-outlier_dict = tp.find_outliers(df)
+# outlier_dict = tp.find_outliers(df)
 
 # Test non-verbose mode
 # outlier_dict = tp.find_outliers(df, verbose=False)
