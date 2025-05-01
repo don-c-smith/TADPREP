@@ -24,7 +24,30 @@ tp.df_info(df, verbose=False)
 Questions:
 - Is the name of this method appropriate?
 - Does it do what a reasonable person would expect it to do?
-- Are we missing any major capabilities?
+- Are we missing any major capabilities? Is this all the 'info' we need?
+- Are there extraneous capabilities present in the method?
+- Are all parameters/modes necessary and/or appropriate?
+- What problems or needed changes were identified? 
+'''
+
+'''
+Testing the reshape method:
+This method Interactively reshapes the input DataFrame according to user specification.
+Parameters: verbose (bool, default=True) 
+    - Controls whether detailed process information is displayed
+Returns: None
+'''
+# Test non-verbose mode first
+tp.reshape(df, verbose=False)
+
+# Test verbose mode
+# tp.reshape(df, verbose=True)
+
+'''
+Questions:
+- Is the name of this method appropriate?
+- Does it do what a reasonable person would expect it to do?
+- Are we missing any major capabilities? Is this all the reshaping capacity we usefully need?
 - Are there extraneous capabilities present in the method?
 - Are all parameters/modes necessary and/or appropriate?
 - What problems or needed changes were identified? 
