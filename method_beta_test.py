@@ -30,9 +30,10 @@ Questions:
 - What problems or needed changes were identified? 
 '''
 
+
 '''
 Testing the reshape method:
-This method Interactively reshapes the input DataFrame according to user specification.
+This method interactively reshapes the input DataFrame according to user specification.
 Parameters: verbose (bool, default=True) 
     - Controls whether detailed process information is displayed
 Returns: None
@@ -48,6 +49,30 @@ Questions:
 - Is the name of this method appropriate?
 - Does it do what a reasonable person would expect it to do?
 - Are we missing any major capabilities? Is this all the reshaping capacity we usefully need?
+- Are there extraneous capabilities present in the method?
+- Are all parameters/modes necessary and/or appropriate?
+- What problems or needed changes were identified? 
+'''
+
+
+'''
+Testing the subset method:
+This method subsets the input DataFrame according to user specification.
+Parameters: verbose (bool, default=True) 
+    - Controls whether detailed process information and methodological guidance is displayed
+Returns: The modified DataFrame as subset by the user's specifications
+'''
+# Test non-verbose mode first
+tp.subset(df, verbose=False)
+
+# Test verbose mode
+# tp.subset(df, verbose=True)
+
+'''
+Questions:
+- Is the name of this method appropriate?
+- Does it do what a reasonable person would expect it to do?
+- Are we missing any major capabilities? Is this all the subset capacity we usefully need?
 - Are there extraneous capabilities present in the method?
 - Are all parameters/modes necessary and/or appropriate?
 - What problems or needed changes were identified? 
