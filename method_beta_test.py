@@ -71,6 +71,9 @@ df_subset = tp.subset(df, verbose=False)
 # Test verbose mode
 # df_subset = tp.subset(df, verbose=True)
 
+# Print subsetted dataframe
+# print(df_subset)
+
 '''
 Questions:
 - Is the name of this method appropriate?
@@ -104,11 +107,21 @@ verbose : bool, default=True
 
 Returns: A dictionary containing outlier information with summary and feature-specific details
 '''
-# Test non-verbose mode first
-tp.subset(df, verbose=False)
+# Test default mode first
+outlier_dict = tp.find_outliers(df)
 
-# Test verbose mode
-# tp.subset(df, verbose=True)
+# Test non-verbose mode
+# outlier_dict = tp.find_outliers(df, verbose=False)
+
+# Test other detection methodologies
+# outlier_dict = tp.find_outliers(df, method='zscore')
+# outlier_dict = tp.find_outliers(df, method='modified_zscore')
+
+# Test specified threshold
+# outlier_dict = tp.find_outliers(df, threshold=0.75)
+
+# Print outlier dictionary
+# print(outlier_dict)
 
 '''
 Questions:
