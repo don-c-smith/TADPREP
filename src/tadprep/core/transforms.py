@@ -350,8 +350,8 @@ def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     if verbose:
         print('NOTE - TADPREP supports:'
               '\n - Seeded and unseeded random sampling'
-              '\n - Stratified random sampling (if categorical features are present)'
-              '\n - Date-based instance deletion (if the data are a timeseries).')
+              '\n - Stratified random sampling (Only if categorical features are present)'
+              '\n - Date-based instance deletion (Only if the data are a timeseries)')
 
     # Present subset options based on data characteristics
     print('\nAvailable subset methods for this dataset:')
@@ -360,11 +360,11 @@ def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
 
     # Only offer stratified sampling if categorical columns are present
     if cat_cols:
-        print('3. Stratified random sampling (Preserves ratio of categories in data)')
+        print('3. Stratified random sampling (Preserves proportions of labels in a specified feature)')
 
     # Only offer time-based subsetting if datetime elements exist
     if has_datetime:
-        print('4. Time-based boundaries for subset (Select only data within a specified time range)')
+        print('4. Time-based boundaries for subsetting (Selects only data within a specified time range)')
 
     while True:
         try:
@@ -485,14 +485,17 @@ def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
             if user_explain.lower() == 'y':
                 print('-' * 50)  # Visual separator
                 print('Overview of Stratified Random Sampling:'
-                      '\n- This method samples data while maintaining proportions in a specific feature.'
+                      '\n- This method samples data while maintaining label proportions in a specific feature.'
                       '\n- You will select a single categorical feature to "stratify by."'
-                      '\n- The proportions in that feature (and *only* in that feature) will be preserved in your '
-                      'sampled data.'
+                      '\n- The proportions of labels in that feature (and *only* in that feature) will be preserved '
+                      'in your sampled data.'
                       '\n- Example: If you stratify by gender in a customer dataset that is 80% male and 20% female,'
-                      '\n  your sample will maintain this 80/20 split, even if other proportions in the data change.'
-                      '\n- This process prevents underrepresentation of minority categories in your chosen feature.'
-                      '\n- This method is most useful when you have important categories that are imbalanced.')
+                      '\n  your sample will maintain this 80%/20% split, even if other label proportions in the data '
+                      'change.'
+                      '\n- This process prevents under- or over-representation of minority categories in your '
+                      'specified feature.'
+                      '\n- This method is most useful when you have an important feature with unbalanced proportions '
+                      'of labels.')
                 print('-' * 50)  # Visual separator
 
         # Display available categorical features
