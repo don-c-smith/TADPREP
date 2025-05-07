@@ -1,6 +1,6 @@
 import pandas as pd
 from .core.transforms import (
-    _df_info_core,
+    _summary_core,
     _reshape_core,
     _find_outliers_core,
     _find_corrs_core,
@@ -18,31 +18,30 @@ from .core.transforms import (
 
 
 # DATAFRAME-LEVEL INFORMATION AND MANIPULATIONS
-def df_info(df: pd.DataFrame, verbose: bool = True) -> None:
+def summary(df: pd.DataFrame) -> None:
     """
     Prints comprehensive information about a DataFrame's structure, contents, and potential data quality issues.
 
-    Basic information (always shown):
+    Basic information:
     - Total number of instances (rows)
     - Total number of features (columns)
     - Count and percentage of instances containing any missing values
-    - Count and percentage of duplicate instances, if any exist
+    - Names, non-Null counts, and datatypes of individual features
+    - Counts of features aggregated at the datatype level
+    - Dataframe physical memory usage
 
-    When verbose=True, the method also displays:
+    The method also runs data quality cheks for:
+    - Count and percentage of duplicate instances, if any exist
     - Features with very low variance (>95% single value)
     - Features containing infinite values (in numeric columns)
     - Features containing empty strings (distinct from NULL/NaN values)
     - Names and data types of all features
     - Non-null value count for each feature
 
-    The method also provides contextual warnings about data quality issues that may require investigation.
-
     Parameters
     ----------
     df : pandas.DataFrame
         The DataFrame to be analyzed
-    verbose : bool, default=True
-        Controls whether detailed feature information and data quality checks are displayed
 
     Returns
     -------
@@ -51,11 +50,8 @@ def df_info(df: pd.DataFrame, verbose: bool = True) -> None:
 
     Notes
     -----
-    Use verbose=True (default) to receive full information about data structure and potential quality issues.
-    Use verbose=False when you only need basic information about dataset size and contents.
-
     Different from NULL/NaN values, empty strings ('') are valid string values that may indicate data quality
-    issues in text columns.
+    issues in text features.
 
     Examples
     --------
@@ -65,8 +61,7 @@ def df_info(df: pd.DataFrame, verbose: bool = True) -> None:
     ...     'A': [1, 2, None, 4],
     ...     'B': ['x', 'y', 'z', 'w']
     ... })
-    >>> tadprep.df_info(df, verbose=True)  # Shows full dataframe information
-    >>> tadprep.df_info(df, verbose=False)  # Shows reduced dataframe information
+    >>> tadprep.summary(df, verbose=True)  # Shows dataframe information
     """
     # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
@@ -76,7 +71,7 @@ def df_info(df: pd.DataFrame, verbose: bool = True) -> None:
     if df.empty:
         raise ValueError('Input DataFrame is empty')
 
-    _df_info_core(df, verbose)
+    _summary_core(df)
 
 
 def reshape(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
