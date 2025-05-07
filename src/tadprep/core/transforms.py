@@ -81,8 +81,8 @@ def _summary_core(df: pd.DataFrame, verbose: bool = True) -> None:
     # Check for string-type features that actually contain numeric data
     num_string_cols = []
     for column in df.select_dtypes(include=['object']).columns:
-        # Skip columns with NaN values or empty strings for this check
-        if df[column].isna().any() or (df[column] == '').any():
+        # Skip columns with all empty strings
+        if (df[column] == '').all():
             continue
 
         # Try to convert each string feature to numeric type
@@ -90,10 +90,16 @@ def _summary_core(df: pd.DataFrame, verbose: bool = True) -> None:
         # If ALL values remain non-NaN after conversion, then ALL strings were actually valid numbers
         # Therefore we identify features that should probably be numeric instead of strings
         try:
-            if pd.to_numeric(df[column], errors='coerce').notna().all():
-                num_string_cols.append(column)
+            # Filter out NaN values before checking
+            non_null_values = df[column].dropna()
+            if len(non_null_values) > 0:  # Make sure we have actual values to check
+                # Attempt conversion
+                converted = pd.to_numeric(non_null_values, errors='coerce')
+                if converted.notna().all():
+                    num_string_cols.append(column)
+        # If conversion fails, just move to the next feature
         except (ValueError, TypeError):
-            continue  # If the conversion attempt fails, just continue to the next feature
+            continue
 
     if num_string_cols:
         print(f'\nALERT: {len(num_string_cols)} feature(s) appear to be numeric but are stored as strings:')
