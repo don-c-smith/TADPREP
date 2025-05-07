@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import tadprep as tp
 # This is the file we will use for beta testing of public-facing methods before subsequent debugging
@@ -46,7 +47,45 @@ Remove verbose mode entirely. It's too simple/low-detail. Just have this be a ze
 Testing refactored 'summary' method (was df_info):
 '''
 # Using normal dataset
-tp.summary(df)
+# tp.summary(df)
+
+# Stress-testing the data quality checks in the method
+# Create a test dataframe with examples for each data quality check
+test_df = pd.DataFrame({
+    # Near-constant feature (>95% single value)
+    'near_constant': ['common_value'] * 19 + ['rare_value'],  # 95% same value
+    # Feature with infinite values
+    'has_inf': [1.0, 2.0, float('inf'), 4.0, 5.0] + [6.0] * 15,
+    # Feature with empty strings (distinct from NaN)
+    'empty_strings': ['value1', '', 'value2', '', 'value3'] + ['value4'] * 15,
+    # Numeric data stored as strings
+    'num_as_string': ['100', '200', '300', '400', '500'] + ['600'] * 15,
+    # Normal numeric feature (for comparison)
+    'normal_num': [10, 20, 30, 40, 50] + [60] * 15,
+    # Normal string feature (for comparison)
+    'normal_string': ['apple', 'banana', 'cherry', 'date', 'elderberry'] + ['fig'] * 15
+})
+
+# Add duplicate rows
+dup_row = pd.DataFrame({
+    'near_constant': ['common_value'],
+    'has_inf': [6.0],
+    'empty_strings': ['value4'],
+    'num_as_string': ['600'],
+    'normal_num': [60],
+    'normal_string': ['fig']
+})
+test_df = pd.concat([test_df, dup_row, dup_row], ignore_index=True)  # Add 2 duplicate rows
+
+# Add a completely empty row (all NaN)
+empty_row = pd.DataFrame([{col: np.nan for col in test_df.columns}])
+test_df = pd.concat([test_df, empty_row], ignore_index=True)
+
+# Print check for test dataframe
+# print(test_df)
+
+# Test data quality checks
+# tp.summary(test_df)
 
 
 '''
