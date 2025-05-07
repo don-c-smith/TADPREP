@@ -13,13 +13,12 @@ from scipy import stats
 
 
 # DATAFRAME-LEVEL INFORMATION AND MANIPULATIONS
-def _df_info_core(df: pd.DataFrame, verbose: bool = True) -> None:
+def _summary_core(df: pd.DataFrame, verbose: bool = True) -> None:
     """
-    Core function to print general top-level information about the full, unaltered datafile for the user.
+    Core function to print general top-level information about a dataframe.
 
     Args:
         df (pd.DataFrame): A Pandas dataframe containing the full, unaltered dataset.
-        verbose (bool): Whether to print more detailed information about the file. Defaults to True.
 
     Returns:
         None. This is a void function.
@@ -35,58 +34,55 @@ def _df_info_core(df: pd.DataFrame, verbose: bool = True) -> None:
     row_nan_rate = (row_nan_cnt / len(df) * 100).round(2)  # Compute rate
     print(f'{row_nan_cnt} instance(s) ({row_nan_rate}%) contain at least one missing value.')
 
-    # Handle duplicate instances
-    # NOTE: This check runs regardless of verbose status because it can help catch a data integrity error
+    # DATA QUALITY CHECKS
+    # Check for duplicate instances
     row_dup_cnt = df.duplicated().sum()  # Compute count of duplicate instances
     if row_dup_cnt > 0:  # If any such instances exist
         row_dup_rate = ((row_dup_cnt / len(df)) * 100)  # Compute duplication rate
         print(f'\nThe dataset contains {row_dup_cnt} duplicate instance(s). ({row_dup_rate:.2f}% of all instances)')
-        if verbose:
-            print('WARNING: If duplicate instances should not exist in your data, this may indicate an error in how '
-                  'your data were collected or imported.')
+        print('WARNING: If duplicate instances should not exist in your data, this may indicate an error in how '
+              'your data were collected or imported.')
 
-    # Subsequent data checks only run if verbose is True
-    if verbose:
-        # Create a list of near-constant features, if any exist
-        near_constant_cols = [(column,
-                               value_counts.index[0],  # Index 0 is the most frequent value in the column
-                               value_counts.iloc[0] * 100)
-                              # For each column
-                              for column in df.columns
-                              # Check if most frequent value in column exceeds 95% of data present
-                              if (value_counts := df[column].value_counts(normalize=True)).iloc[0] > 0.95]  # Walrus!
+    # Check for near-constant features
+    near_constant_cols = [(column,
+                           value_counts.index[0],  # Index 0 is the most frequent value in the column
+                           value_counts.iloc[0] * 100)
+                          # For each column
+                          for column in df.columns
+                          # Check if most frequent value in column exceeds 95% of data present
+                          if (value_counts := df[column].value_counts(normalize=True)).iloc[0] > 0.95]  # Walrus!
 
-        if near_constant_cols:
-            print(f'\nALERT: {len(near_constant_cols)} feature(s) has very low variance (>95% single-value):')
-            for column, value, rate in near_constant_cols:
-                print(f'- {column} (Dominant value: {value}, Dominance rate: {rate:.2f}%)')
+    if near_constant_cols:
+        print(f'\nALERT: {len(near_constant_cols)} feature(s) has very low variance (>95% single-value):')
+        for column, value, rate in near_constant_cols:
+            print(f'- {column} (Dominant value: {value}, Dominance rate: {rate:.2f}%)')
 
-        # Create a list of features containing infinite values, if any exist
-        inf_cols = [(column, np.isinf(df[column]).sum())  # Column name and count of inf values
-                    for column in df.select_dtypes(include=['int64', 'float64']).columns  # For each numeric column
-                    if np.isinf(df[column]).sum() > 0]  # Append if the column contains any inf values
+    # Create a list of features containing infinite values, if any exist
+    inf_cols = [(column, np.isinf(df[column]).sum())  # Column name and count of infinite values
+                for column in df.select_dtypes(include=['int64', 'float64']).columns  # For each numeric column
+                if np.isinf(df[column]).sum() > 0]  # Append if the column contains any infinite values
 
-        if inf_cols:
-            print(f'\nALERT: {len(inf_cols)} feature(s) contains infinite values:')
-            for column, inf_count in inf_cols:
-                print(f'- {column} contains {inf_count} infinite value(s)')
+    if inf_cols:
+        print(f'\nALERT: {len(inf_cols)} feature(s) contains infinite values:')
+        for column, inf_count in inf_cols:
+            print(f'- {column} contains {inf_count} infinite value(s)')
 
-        # Create a list of features containing empty strings (i.e. distinct from NULL/NaN), if any exist
-        empty_string_cols = [(column, (df[column] == '').sum())  # Column name and count of empty strings
-                             for column in df.select_dtypes(include=['object']).columns  # For each string column
-                             if (df[column] == '').sum() > 0]  # If column contains any empty strings
+    # Create a list of features containing empty strings (i.e. distinct from NULL/NaN), if any exist
+    empty_string_cols = [(column, (df[column] == '').sum())  # Column name and count of empty strings
+                         for column in df.select_dtypes(include=['object']).columns  # For each string column
+                         if (df[column] == '').sum() > 0]  # If column contains any empty strings
 
-        if empty_string_cols:
-            print(f'\nALERT: {len(empty_string_cols)} feature(s) contains non-NULL empty strings '
-                  f'(e.g. values of "", distinct from NULL/NaN):')
-            for column, empty_count in empty_string_cols:
-                print(f'- {column} contains {empty_count} non-NULL empty string(s)')
+    if empty_string_cols:
+        print(f'\nALERT: {len(empty_string_cols)} feature(s) contains non-NULL empty strings '
+              f'(e.g. values of "", distinct from NULL/NaN):')
+        for column, empty_count in empty_string_cols:
+            print(f'- {column} contains {empty_count} non-NULL empty string(s)')
 
-        # Finally, print names and datatypes of features in file
-        print('\nNAMES AND DATATYPES OF FEATURES:')
-        print('-' * 50)  # Visual separator
-        print(df.info(verbose=True, memory_usage=True, show_counts=True))
-        print('-' * 50)  # Visual separator
+    # Finally, print names and datatypes of features in file
+    print('\nNAMES AND DATATYPES OF FEATURES:')
+    print('-' * 50)  # Visual separator
+    print(df.info(verbose=True, memory_usage=True, show_counts=True))
+    print('-' * 50)  # Visual separator
 
 
 def _reshape_core(
@@ -737,6 +733,7 @@ def _find_outliers_core(df: pd.DataFrame, method: str = 'iqr', threshold: float 
             - For Modified Z-score: 3.5
         verbose (bool, default=True): Whether to print detailed information about outliers
     """
+
     def numpy_to_python(obj):
         """This helper function converts Numpy numeric types to Python native types."""
         if isinstance(obj, np.integer):
@@ -1011,6 +1008,7 @@ def _find_corrs_core(df: pd.DataFrame, method: str = 'pearson', threshold: float
                 ]
             }
     """
+
     def numpy_to_python(obj):
         """This helper function converts Numpy numeric types to Python native types."""
         if isinstance(obj, np.integer):
@@ -1611,6 +1609,7 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
         ValueError: If invalid indices are provided for column renaming
         ValueError: If any other invalid input is provided
     """
+
     def valid_identifier_check(name: str) -> tuple[bool, str]:
         """Helper function to validate whether a proposed feature name follows Python naming conventions."""
         # Check using valid identifier method
@@ -2152,9 +2151,9 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
                 value_cnt = df[column].value_counts()
                 true_cnt = int(df[column].sum())
                 false_cnt = int(len(df[column].dropna()) - true_cnt)
-                print(f'True values: {format_large_nums(true_cnt)} ({format_percents(true_cnt, 
+                print(f'True values: {format_large_nums(true_cnt)} ({format_percents(true_cnt,
                                                                                      len(df[column].dropna()))})')
-                print(f'False values: {format_large_nums(false_cnt)} ({format_percents(false_cnt, 
+                print(f'False values: {format_large_nums(false_cnt)} ({format_percents(false_cnt,
                                                                                        len(df[column].dropna()))})')
 
                 if verbose:
@@ -2400,6 +2399,7 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
     Raises:
         ValueError: If an invalid imputation method is selected
     """
+
     def plot_dist_comps(original: pd.Series, imputed: pd.Series, feature_name: str) -> None:
         """
         This helper function creates and displays a side-by-side comparison of pre- and post- imputation distributions.
@@ -4255,7 +4255,7 @@ def _transform_core(
         return stats
 
     def batch_transform(df: pd.DataFrame, features: list[str], method: str,
-                                 preserve_features: bool, verbose: bool) -> list[dict]:
+                        preserve_features: bool, verbose: bool) -> list[dict]:
         """Apply the same transformation to multiple features."""
         transform_records = []
 
@@ -4795,7 +4795,7 @@ def _build_interactions_core(
             interact_types = ['^2', '^3', '^1/2', '^1/3', 'e^x'] + interact_types
         if 'distance' in interact_types:
             interact_types = [x for x in interact_types if x != 'distance']
-            interact_types = ['magnitude','magsum', 'magdiff'] + interact_types
+            interact_types = ['magnitude', 'magsum', 'magdiff'] + interact_types
         if 'polynomial' in interact_types:
             interact_types = [x for x in interact_types if x != 'polynomial']
             interact_types = ['poly', 'prod^1/2', 'prod^1/3'] + interact_types
@@ -4824,18 +4824,18 @@ def _build_interactions_core(
         interact_types = clean_interact_types(interact_types)
 
     # Check for valid interaction categories or types
-    valid_types = ['arithmetic',                        # Categorical interaction calls
-                   'exponential',                       #
-                   'distance',                          #
-                   'polynomial',                        #
-                   'logexp',                            #
-                   'stat',                              #
-                   '+', '-', '*', '/',                  # Arithmetic
-                   '^2', '^3', '^1/2', '^1/3', 'e^x',   # Exponential
-                   'magnitude','magsum', 'magdiff',     # Distance
-                   'poly', 'prod^1/2', 'prod^1/3',      # Polynomial and other roots
-                   'log_inter', 'exp_inter',            # Logarithmic and exponential interactions
-                   'mean_diff', 'mean_ratio']           # Statistical interactions
+    valid_types = ['arithmetic',  # Categorical interaction calls
+                   'exponential',  #
+                   'distance',  #
+                   'polynomial',  #
+                   'logexp',  #
+                   'stat',  #
+                   '+', '-', '*', '/',  # Arithmetic
+                   '^2', '^3', '^1/2', '^1/3', 'e^x',  # Exponential
+                   'magnitude', 'magsum', 'magdiff',  # Distance
+                   'poly', 'prod^1/2', 'prod^1/3',  # Polynomial and other roots
+                   'log_inter', 'exp_inter',  # Logarithmic and exponential interactions
+                   'mean_diff', 'mean_ratio']  # Statistical interactions
 
     manual_abort = 0
     if (interact_types is None) or (not interact_types):
@@ -4915,7 +4915,7 @@ def _build_interactions_core(
     for type in interact_types:
         if type not in valid_types:
             raise ValueError(f'Invalid interaction type: {type}')
-        
+
     # Clean up runtime user inputs
     interact_types = clean_interact_types(interact_types)
 
@@ -4924,7 +4924,7 @@ def _build_interactions_core(
         print("Only 1 feature provided and multi-feature interaction types specified. INVALID OPERATION SET. "
               "Aborting method. Input DataFrame not modified.")
         return df
-    
+
     # Record of actions for 'verbose' state
     action_summary = []
 
@@ -4946,18 +4946,18 @@ def _build_interactions_core(
                   "Only f1-argument-sourced interactions will be created in 'Focused' paradigm.")
         # Perform interaction term creation
         for interact in interact_types:
-            
+
             # Arithmetic interactions
-            if interact == '+':                     # Sum
+            if interact == '+':  # Sum
                 new_feature = f'{f1}_+_{f2}'
                 df[new_feature] = df[f1] + df[f2]
-            elif interact == '-':                   # Difference
+            elif interact == '-':  # Difference
                 new_feature = f'{f1}_-_{f2}'
                 df[new_feature] = df[f1] - df[f2]
-            elif interact == '*':                   # Product
+            elif interact == '*':  # Product
                 new_feature = f'{f1}_*_{f2}'
                 df[new_feature] = df[f1] * df[f2]
-            elif interact == '/':                   # Quotient
+            elif interact == '/':  # Quotient
                 new_feature = f'{f1}_/_{f2}'
                 df[new_feature] = df[f1] / df[f2]
                 # Replace infinite values with NaN
@@ -4968,57 +4968,57 @@ def _build_interactions_core(
                           'Take care to handle these and propagated-NaNs in your analysis.***')
 
             # Exponential interactions
-            elif interact == '^2':                  # Square
+            elif interact == '^2':  # Square
                 new_feature = f'{f1}^2'
                 df[new_feature] = df[f1] ** 2
-            elif interact == '^3':                  # Cube
+            elif interact == '^3':  # Cube
                 new_feature = f'{f1}^3'
                 df[new_feature] = df[f1] ** 3
-            elif interact == '^1/2':                # Square root
+            elif interact == '^1/2':  # Square root
                 new_feature = f'{f1}^1/2'
                 df[new_feature] = np.sqrt(df[f1])
-            elif interact == '^1/3':                # Cube root
+            elif interact == '^1/3':  # Cube root
                 new_feature = f'{f1}^1/3'
                 df[new_feature] = np.cbrt(df[f1])
-            elif interact == 'e^x':                 # Exponential
+            elif interact == 'e^x':  # Exponential
                 new_feature = f'e^{f1}'
                 df[new_feature] = np.exp(df[f1])
 
             # Distance interactions
-            elif interact == 'magnitude':           # Magnitude
+            elif interact == 'magnitude':  # Magnitude
                 new_feature = f'magnitude_{f1}_{f2}'
                 df[new_feature] = np.sqrt(df[f1] ** 2 + df[f2] ** 2)
-            elif interact == 'magsum':              # Magnitude sum
+            elif interact == 'magsum':  # Magnitude sum
                 new_feature = f'magsum_{f1}_{f2}'
                 df[new_feature] = np.abs(df[f1] + df[f2])
-            elif interact == 'magdiff':             # Magnitude difference
+            elif interact == 'magdiff':  # Magnitude difference
                 new_feature = f'magdiff_{f1}_{f2}'
                 df[new_feature] = np.abs(df[f1] - df[f2])
-            
+
             # Polynomial and other roots
-            elif interact == 'poly':                # Polynomial
+            elif interact == 'poly':  # Polynomial
                 new_feature = f'poly_{f1}_{f2}'
                 df[new_feature] = df[f1] * df[f2] + df[f1] ** 2 + df[f2] ** 2
-            elif interact == 'prod^1/2':            # Product square root
+            elif interact == 'prod^1/2':  # Product square root
                 new_feature = f'prod^1/2_{f1}_{f2}'
                 df[new_feature] = np.sqrt(np.abs(df[f1] * df[f2]))
-            elif interact == 'prod^1/3':            # Product cube root
+            elif interact == 'prod^1/3':  # Product cube root
                 new_feature = f'prod^1/3_{f1}_{f2}'
                 df[new_feature] = np.cbrt(df[f1] * df[f2])
-            
+
             # Logarithmic and exponential interactions
-            elif interact == 'log_inter':           # Logarithmic interaction
+            elif interact == 'log_inter':  # Logarithmic interaction
                 new_feature = f'log_inter_{f1}_{f2}'
                 df[new_feature] = np.log(df[f1] + 1) * np.log(df[f2] + 1)
-            elif interact == 'exp_inter':           # Exponential interaction
+            elif interact == 'exp_inter':  # Exponential interaction
                 new_feature = f'exp_inter_{f1}_{f2}'
                 df[new_feature] = np.exp(df[f1]) * np.exp(df[f2])
 
             # Statistical interactions
-            elif interact == 'mean_diff':           # Mean difference
+            elif interact == 'mean_diff':  # Mean difference
                 new_feature = f'mean_diff_{f1}_{f2}'
                 df[new_feature] = df[f1] - df[[f1, f2]].mean(axis=1)
-            elif interact == 'mean_ratio':          # Mean ratio
+            elif interact == 'mean_ratio':  # Mean ratio
                 new_feature = f'mean_ratio_{f1}_{f2}'
                 df[new_feature] = df[f1] / df[[f1, f2]].mean(axis=1)
 
@@ -5032,7 +5032,7 @@ def _build_interactions_core(
                 drop_str = f'Dropping original features {f1} and {f2} from DataFrame.'
                 action_summary.append(drop_str)
                 print(drop_str)
-            df.drop(columns=[f1,f2], inplace=True)
+            df.drop(columns=[f1, f2], inplace=True)
 
     # "Exploratory" interaction creation paradigm, i.e. all possible interactions between all features in provided list
     if features_list:
@@ -5049,60 +5049,60 @@ def _build_interactions_core(
         # Adjust if necessary
         if set(interact_types).issubset({'^2', '^3', '^1/2', '^1/3', 'e^x'}):
             single_feat_interactions_only = 1
-            
+
         for feature, other_feature in feature_combinations:
             for interact in interact_types:
-                
+
                 # Arithmetic interactions
-                if interact == '+':           # Sum
+                if interact == '+':  # Sum
                     new_feature = f'{feature}_+_{other_feature}'
                     df[new_feature] = df[feature] + df[other_feature]
-                elif interact == '-':           # Difference
+                elif interact == '-':  # Difference
                     new_feature = f'{feature}_-_{other_feature}'
                     df[new_feature] = df[feature] - df[other_feature]
-                elif interact == '*':             # Product
+                elif interact == '*':  # Product
                     new_feature = f'{feature}_*_{other_feature}'
                     df[new_feature] = df[feature] * df[other_feature]
-                elif interact == '/':           # Quotient
+                elif interact == '/':  # Quotient
                     new_feature = f'{feature}_/_{other_feature}'
                     df[new_feature] = df[feature] / df[other_feature]
                     # Replace infinite values with NaN
                     df[new_feature] = df[new_feature].replace([np.inf, -np.inf], np.nan)
-                    
+
                     if verbose:
                         print('***Div-by-zero errors are replaced with NaN. '
                               'Take care to handle these and propagated-NaNs in your analysis.***')
 
                 # Exponential interactions
-                elif interact == '^2':          # Square
+                elif interact == '^2':  # Square
                     new_feature = f'{feature}^2'
                     if new_feature not in df.columns:
                         df[new_feature] = df[feature] ** 2
                     if (len(feature_combinations) == 1) and (feature_combinations[0][1] is not None):
                         new_feature_2 = f'{other_feature}^2'
                         df[new_feature_2] = df[other_feature] ** 2
-                elif interact == '^3':          # Cube
+                elif interact == '^3':  # Cube
                     new_feature = f'{feature}^3'
                     if new_feature not in df.columns:
                         df[new_feature] = df[feature] ** 3
                     if (len(feature_combinations) == 1) and (feature_combinations[0][1] is not None):
                         new_feature_2 = f'{other_feature}^3'
                         df[new_feature_2] = df[other_feature] ** 3
-                elif interact == '^1/2':        # Square root
+                elif interact == '^1/2':  # Square root
                     new_feature = f'{feature}^1/2'
                     if new_feature not in df.columns:
                         df[new_feature] = np.sqrt(df[feature])
                     if (len(feature_combinations) == 1) and (feature_combinations[0][1] is not None):
                         new_feature_2 = f'{other_feature}^1/2'
                         df[new_feature_2] = np.sqrt(df[other_feature])
-                elif interact == '^1/3':        # Cube root
+                elif interact == '^1/3':  # Cube root
                     new_feature = f'{feature}^1/3'
                     if new_feature not in df.columns:
                         df[new_feature] = np.cbrt(df[feature])
                     if (len(feature_combinations) == 1) and (feature_combinations[0][1] is not None):
                         new_feature_2 = f'{other_feature}^1/3'
                         df[new_feature_2] = np.cbrt(df[other_feature])
-                elif interact == 'e^x':         # Exponential
+                elif interact == 'e^x':  # Exponential
                     new_feature = f'e^{feature}'
                     if new_feature not in df.columns:
                         df[new_feature] = np.exp(df[feature])
@@ -5111,37 +5111,37 @@ def _build_interactions_core(
                         df[new_feature_2] = np.exp(df[other_feature])
 
                 # Distance interactions
-                elif interact == 'magnitude':   # Magnitude
+                elif interact == 'magnitude':  # Magnitude
                     new_feature = f'magnitude_{feature}_{other_feature}'
                     df[new_feature] = np.sqrt(df[feature] ** 2 + df[other_feature] ** 2)
-                elif interact == 'magsum':      # Magnitude sum
+                elif interact == 'magsum':  # Magnitude sum
                     new_feature = f'magsum_{feature}_{other_feature}'
                     df[new_feature] = np.abs(df[feature] + df[other_feature])
-                elif interact == 'magdiff':     # Magnitude difference
+                elif interact == 'magdiff':  # Magnitude difference
                     new_feature = f'magdiff_{feature}_{other_feature}'
                     df[new_feature] = np.abs(df[feature] - df[other_feature])
 
                 # Polynomial and other roots
-                elif interact == 'poly':        # Polynomial
+                elif interact == 'poly':  # Polynomial
                     new_feature = f'poly_{feature}_{other_feature}'
                     df[new_feature] = df[feature] * df[other_feature] + df[feature] ** 2 + df[other_feature] ** 2
-                elif interact == 'prod^1/2':    # Product square root
+                elif interact == 'prod^1/2':  # Product square root
                     new_feature = f'prod^1/2_{feature}_{other_feature}'
                     df[new_feature] = np.sqrt(np.abs(df[feature] * df[other_feature]))
-                elif interact == 'prod^1/3':    # Product cube root
+                elif interact == 'prod^1/3':  # Product cube root
                     new_feature = f'prod^1/3_{feature}_{other_feature}'
                     df[new_feature] = np.cbrt(df[feature] * df[other_feature])
 
                 # Logarithmic and exponential interactions
-                elif interact == 'log_inter':   # Logarithmic interaction
+                elif interact == 'log_inter':  # Logarithmic interaction
                     new_feature = f'log_inter_{feature}_{other_feature}'
                     df[new_feature] = np.log(df[feature] + 1) * np.log(df[other_feature] + 1)
-                elif interact == 'exp_inter':   # Exponential interaction
+                elif interact == 'exp_inter':  # Exponential interaction
                     new_feature = f'exp_inter_{feature}_{other_feature}'
                     df[new_feature] = np.exp(df[feature]) * np.exp(df[other_feature])
 
                 # Statistical interactions
-                elif interact == 'mean_diff':   # Mean difference
+                elif interact == 'mean_diff':  # Mean difference
                     new_feature = f'mean_diff_{feature}_{other_feature}'
                     df[new_feature] = df[feature] - df[[feature, other_feature]].mean(axis=1)
                 elif interact == 'mean_ratio':  # Mean ratio
@@ -5190,6 +5190,7 @@ def _build_interactions_core(
         print('-' * 50)  # Visual separator
 
     return df
+
 
 # #-------New OOP-----------------------------------
 
