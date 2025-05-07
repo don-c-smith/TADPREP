@@ -2,7 +2,7 @@
 
 # Import public-facing methods that users will access
 from .package import (
-    df_info,
+    summary,
     find_outliers,
     find_corrs,
     reshape,
@@ -20,7 +20,7 @@ from .package import (
 
 # Define exposure if "from tadprep import *" is called
 __all__ = [
-    'df_info',
+    'summary',
     'find_outliers',
     'find_corrs',
     'reshape',
