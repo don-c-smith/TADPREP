@@ -18,7 +18,7 @@ def _summary_core(df: pd.DataFrame, verbose: bool = True) -> None:
     Core function to print general top-level information about a dataframe.
 
     Args:
-        df (pd.DataFrame): A Pandas dataframe containing the full, unaltered dataset.
+        df (pd.DataFrame): A Pandas dataframe to be summarized.
 
     Returns:
         None. This is a void function.
@@ -77,6 +77,37 @@ def _summary_core(df: pd.DataFrame, verbose: bool = True) -> None:
               f'(e.g. values of "", distinct from NULL/NaN):')
         for column, empty_count in empty_string_cols:
             print(f'- {column} contains {empty_count} non-NULL empty string(s)')
+
+    # Check for string-type features that actually contain numeric data
+    num_string_cols = []
+    for column in df.select_dtypes(include=['object']).columns:
+        # Skip columns with NaN values or empty strings for this check
+        if df[column].isna().any() or (df[column] == '').any():
+            continue
+
+        # Try to convert each string feature to numeric type
+        # pd.to_numeric with errors='coerce' will convert non-numeric values to NaN
+        # If ALL values remain non-NaN after conversion, then ALL strings were actually valid numbers
+        # Therefore we identify features that should probably be numeric instead of strings
+        try:
+            if pd.to_numeric(df[column], errors='coerce').notna().all():
+                num_string_cols.append(column)
+        except (ValueError, TypeError):
+            continue  # If the conversion attempt fails, just continue to the next feature
+
+    if num_string_cols:
+        print(f'\nALERT: {len(num_string_cols)} feature(s) appear to be numeric but are stored as strings:')
+        print('Identified features:')
+        for column in num_string_cols:
+            print(f'- {column}')
+        print('Consider converting these features to a numeric type using pd.to_numeric() for proper analysis.')
+
+    # Check for all-null rows (i.e. empty instances)
+    all_null_rows = df.isna().all(axis=1).sum()
+    if all_null_rows > 0:
+        all_null_rate = (all_null_rows / len(df) * 100).round(2)
+        print(f'\nALERT: Dataset contains {all_null_rows} completely empty row(s) ({all_null_rate}% of all instances)')
+        print('These instances contain no data and may need to be removed before analysis.')
 
     # Finally, print names and datatypes of features in file
     print('\nNAMES AND DATATYPES OF FEATURES:')
