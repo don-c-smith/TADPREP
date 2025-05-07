@@ -42,6 +42,12 @@ Remove verbose mode entirely. It's too simple/low-detail. Just have this be a ze
 ** Refactoring to be done by Don **
 '''
 
+'''
+Testing refactored 'summary' method (was df_info):
+'''
+# Using normal dataset
+tp.summary(df)
+
 
 '''
 Testing the subset method:
@@ -55,10 +61,10 @@ Returns: The modified DataFrame as subset by the user's specifications
 # df_subset = tp.subset(df, verbose=False)
 
 # Test verbose mode
-df_subset = tp.subset(df, verbose=True)
+# df_subset = tp.subset(df, verbose=True)
 
 # Print subsetted dataframe
-print(df_subset)
+# print(df_subset)
 
 '''
 Questions:
