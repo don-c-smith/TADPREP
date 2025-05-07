@@ -35,8 +35,8 @@ def summary(df: pd.DataFrame) -> None:
     - Features with very low variance (>95% single value)
     - Features containing infinite values (in numeric columns)
     - Features containing empty strings (distinct from NULL/NaN values)
-    - Names and data types of all features
-    - Non-null value count for each feature
+    - Features which are actually numerical (integers or floats) but are typed as strings
+    - Instances which are all-Null (i.e. 'empty rows')
 
     Parameters
     ----------
