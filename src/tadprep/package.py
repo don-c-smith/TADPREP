@@ -48,11 +48,6 @@ def summary(df: pd.DataFrame) -> None:
     None
         This is a void method which prints information to the console.
 
-    Notes
-    -----
-    Different from NULL/NaN values, empty strings ('') are valid string values that may indicate data quality
-    issues in text features.
-
     Examples
     --------
     >>> import pandas as pd
