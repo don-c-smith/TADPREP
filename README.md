@@ -107,7 +107,7 @@ df_raw = pd.read_sql_table(
 )
 
 # Display general dataframe information using TADPREP
-tp.df_info(df_raw, verbose=True)
+tp.summary(df_raw)
 
 # Reshape data using TADPREP
 df_reshape = tp.reshape(df_raw, verbose=False)
@@ -140,7 +140,7 @@ data preparation process:
 
 #### Individual Data Preparation Methods
 
-`df_info(df, verbose=True)`
+`summary(df, verbose=True)`
 - Displays comprehensive information about DataFrame structure and contents
 - Shows feature counts, data types, and missingness statistics
 - Identifies potential data quality issues such as:
