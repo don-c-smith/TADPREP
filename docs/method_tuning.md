@@ -1,12 +1,11 @@
 # Public-Facing Method Development Planning
 
-## Method: `df_info`
+## Method: `summary`
 ### Core Purpose:
 Prints summary, top-level information about a dataframe to the console.
 
 ### Parameters:
 - `df` Input Pandas dataframe.
-- `verbose` (Boolean, default = True) which controls level of detail in output.
 
 ### Returns:
 - None - void method. Prints info to console.
@@ -18,9 +17,6 @@ Prints summary, top-level information about a dataframe to the console.
   - Prints total number of instances with *any* missing values
   - Prints % of instances with *any* missing values as a proportion of total instances
   - Prints count of duplicate instances
-
-
-- If `verbose=True`, the method **also** prints:
   - A warning to assess whether the existence of duplicate instances indicates a data error has occurred
   - A list of near-constant features (i.e. those with >= 95% matched values)
   - A list of features containing any infinite values (i.e. np.inf values)
