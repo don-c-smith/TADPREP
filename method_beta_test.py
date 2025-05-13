@@ -158,7 +158,7 @@ Questions:
 - What problems or needed changes were identified? 
 '''
 
-# DON: CREATE A DATASET WITH OUTLIERS!
+
 '''
 Testing the find_outliers method:
 This method detects outliers in numerical features of a DataFrame using a specified detection method.
@@ -181,6 +181,17 @@ verbose : bool, default=True
 
 Returns: A dictionary containing outlier information with summary and feature-specific details
 '''
+df_outliers = pd.DataFrame({
+    'cat_feature': ['Bob', 'Bob', 'Bob', 'Bob', 'Bob', 'Bob', 'Bob', 'Bob', 'Bob', 'Bob', ],
+    'no_outliers': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    'one_small_outlier': [1, 1, 1, 1, 1, 1, 1, 1, 1, 10],
+    'one_large_outlier': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1000],
+    'two_small_outliers': [1, 1, 1, 1, 1, 1, 1, 1, 10, 50],
+    'two_large_outliers': [1, 1, 1, 1, 1, 1, 1, 1, 1000, 50000],
+    'constant_feature': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    'all_missing': [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan]
+    })
+
 # Test default mode first
 # outlier_dict = tp.find_outliers(df)
 
