@@ -4,7 +4,7 @@ import tadprep as tp
 # This is the file we will use for beta testing of public-facing methods before subsequent debugging
 
 # Load test data
-df = pd.read_csv(r'C:\Users\doncs\Documents\GitHub\TADPREP\data\river_data.csv')
+# df = pd.read_csv(r'C:\Users\doncs\Documents\GitHub\TADPREP\data\river_data.csv')
 # Print check
 # print(df)
 
@@ -51,35 +51,35 @@ Testing refactored 'summary' method (was df_info):
 
 # Stress-testing the data quality checks in the method
 # Create a test dataframe with examples for each data quality check
-test_df = pd.DataFrame({
+# test_df = pd.DataFrame({
     # Near-constant feature (>95% single value)
-    'near_constant': ['common_value'] * 19 + ['rare_value'],  # 95% same value
-    # Feature with infinite values
-    'has_inf': [1.0, 2.0, float('inf'), 4.0, 5.0] + [6.0] * 15,
-    # Feature with empty strings (distinct from NaN)
-    'empty_strings': ['value1', '', 'value2', '', 'value3'] + ['value4'] * 15,
-    # Numeric data stored as strings
-    'num_as_string': ['100', '200', '300', '400', '500'] + ['600'] * 15,
-    # Normal numeric feature (for comparison)
-    'normal_num': [10, 20, 30, 40, 50] + [60] * 15,
-    # Normal string feature (for comparison)
-    'normal_string': ['apple', 'banana', 'cherry', 'date', 'elderberry'] + ['fig'] * 15
-})
+#     'near_constant': ['common_value'] * 19 + ['rare_value'],  # 95% same value
+#     # Feature with infinite values
+#     'has_inf': [1.0, 2.0, float('inf'), 4.0, 5.0] + [6.0] * 15,
+#     # Feature with empty strings (distinct from NaN)
+#     'empty_strings': ['value1', '', 'value2', '', 'value3'] + ['value4'] * 15,
+#     # Numeric data stored as strings
+#     'num_as_string': ['100', '200', '300', '400', '500'] + ['600'] * 15,
+#     # Normal numeric feature (for comparison)
+#     'normal_num': [10, 20, 30, 40, 50] + [60] * 15,
+#     # Normal string feature (for comparison)
+#     'normal_string': ['apple', 'banana', 'cherry', 'date', 'elderberry'] + ['fig'] * 15
+# })
 
 # Add duplicate rows
-dup_row = pd.DataFrame({
-    'near_constant': ['common_value'],
-    'has_inf': [6.0],
-    'empty_strings': ['value4'],
-    'num_as_string': ['600'],
-    'normal_num': [60],
-    'normal_string': ['fig']
-})
-test_df = pd.concat([test_df, dup_row, dup_row], ignore_index=True)  # Add 2 duplicate rows
+# dup_row = pd.DataFrame({
+#     'near_constant': ['common_value'],
+#     'has_inf': [6.0],
+#     'empty_strings': ['value4'],
+#     'num_as_string': ['600'],
+#     'normal_num': [60],
+#     'normal_string': ['fig']
+# })
+# test_df = pd.concat([test_df, dup_row, dup_row], ignore_index=True)  # Add 2 duplicate rows
 
 # Add a completely empty row (all NaN)
-empty_row = pd.DataFrame([{col: np.nan for col in test_df.columns}])
-test_df = pd.concat([test_df, empty_row], ignore_index=True)
+# empty_row = pd.DataFrame([{col: np.nan for col in test_df.columns}])
+# test_df = pd.concat([test_df, empty_row], ignore_index=True)
 
 # Print check for test dataframe
 # print(test_df)
@@ -133,7 +133,6 @@ Yes
 '''
 
 
-# *** PICK UP TEAM DEBUGGING HERE ***
 '''
 Testing the reshape method:
 This method interactively reshapes the input DataFrame according to user specification.
@@ -155,7 +154,14 @@ Questions:
 - Are we missing any major capabilities? Is this all the reshaping capacity we usefully need?
 - Are there extraneous capabilities present in the method?
 - Are all parameters/modes necessary and/or appropriate?
-- What problems or needed changes were identified? 
+- What problems or needed changes were identified?
+    - Clarify ability to select multiple reshape methods at user prompt
+    - Add ability to select individual features to drop if list not passed
+    - Counts of missing values by feature should be made more legible
+    - Enumerate features to drop rows by and have user pass indices, not feature names
+    - BUG: Generalized degree of population, default decimal-percent throwing traceback (final_thresh feature)
+    - Move explanation out of input dependence, have it run if verbose is true
+    
 '''
 
 
@@ -194,20 +200,20 @@ df_outliers = pd.DataFrame({
     })
 
 # Test default mode first
-# outlier_dict = tp.find_outliers(df)
+# outlier_dict = tp.find_outliers(df_outliers)
 
 # Test non-verbose mode
-# outlier_dict = tp.find_outliers(df, verbose=False)
+# outlier_dict = tp.find_outliers(df_outliers, verbose=False)
 
 # Test other detection methodologies
-# outlier_dict = tp.find_outliers(df, method='zscore')
-# outlier_dict = tp.find_outliers(df, method='modified_zscore')
+# outlier_dict = tp.find_outliers(df_outliers, method='zscore')
+# outlier_dict = tp.find_outliers(df_outliers, method='modified_zscore')
 
 # Test specified threshold
-# outlier_dict = tp.find_outliers(df, threshold=0.75)
+outlier_dict = tp.find_outliers(df_outliers, threshold=0.75)
 
 # Print outlier dictionary
-# print(outlier_dict)
+print(outlier_dict)
 
 '''
 Questions:
@@ -216,5 +222,10 @@ Questions:
 - Are we missing any major capabilities? Is this all the outlier detection capacity we usefully need?
 - Are there extraneous capabilities present in the method?
 - Are all parameters/modes necessary and/or appropriate?
-- What problems or needed changes were identified? 
+- What problems or needed changes were identified?
+    - Add line break before feature-skipping warning notifications
+    - Remove the 'No numerical features found in dataframe' warning from the verbose condition - should always print
+    - Modified z-score method is saying mean absolute deviation is zero - why? Check into this and assess.
+    - Detection method should be more top-level in results dictionary, not at feature level. This is method level.
+    - Custom threshold value should present at the top-level in results dictionary
 '''
