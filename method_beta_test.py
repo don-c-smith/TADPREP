@@ -182,7 +182,7 @@ verbose : bool, default=True
 Returns: A dictionary containing outlier information with summary and feature-specific details
 '''
 df_outliers = pd.DataFrame({
-    'cat_feature': ['Bob', 'Bob', 'Bob', 'Bob', 'Bob', 'Bob', 'Bob', 'Bob', 'Bob', 'Bob', ],
+    'cat_feature': ['Bob', 'Bob', 'Bob', 'Bob', 'Barbara', 'Ann', 'Bob', 'Bob', 'Bob', 'Barbara'],
     'no_outliers': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     'one_small_outlier': [1, 1, 1, 1, 1, 1, 1, 1, 1, 10],
     'one_large_outlier': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1000],
