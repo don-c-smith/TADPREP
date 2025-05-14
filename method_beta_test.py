@@ -181,6 +181,7 @@ verbose : bool, default=True
 
 Returns: A dictionary containing outlier information with summary and feature-specific details
 '''
+# Features set up to trigger 'catches': categorical feature, constant numerical feature, all-NaN feature
 df_outliers = pd.DataFrame({
     'cat_feature': ['Bob', 'Bob', 'Bob', 'Bob', 'Barbara', 'Ann', 'Bob', 'Bob', 'Bob', 'Barbara'],
     'no_outliers': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
