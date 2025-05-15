@@ -150,10 +150,15 @@ Returns: None
 '''
 Questions:
 - Is the name of this method appropriate?
+Yes
 - Does it do what a reasonable person would expect it to do?
+Yes
 - Are we missing any major capabilities? Is this all the reshaping capacity we usefully need?
+Yes
 - Are there extraneous capabilities present in the method?
+No
 - Are all parameters/modes necessary and/or appropriate?
+Yes
 - What problems or needed changes were identified?
     - Clarify ability to select multiple reshape methods at user prompt
     - Add ability to select individual features to drop if list not passed
@@ -218,14 +223,19 @@ print(outlier_dict)
 '''
 Questions:
 - Is the name of this method appropriate?
+Yes
 - Does it do what a reasonable person would expect it to do?
+Yes
 - Are we missing any major capabilities? Is this all the outlier detection capacity we usefully need?
+No
 - Are there extraneous capabilities present in the method?
+No
 - Are all parameters/modes necessary and/or appropriate?
+Yes
 - What problems or needed changes were identified?
     - Add line break before feature-skipping warning notifications
     - Remove the 'No numerical features found in dataframe' warning from the verbose condition - should always print
     - Modified z-score method is saying mean absolute deviation is zero - why? Check into this and assess.
-    - Detection method should be more top-level in results dictionary, not at feature level. This is method level.
+    - Detection method should be top-level in results dictionary, not at feature level. This is a method-level choice.
     - Custom threshold value should present at the top-level in results dictionary
 '''
