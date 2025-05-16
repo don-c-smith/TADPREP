@@ -989,7 +989,7 @@ def _find_outliers_core(df: pd.DataFrame, method: str = 'iqr', threshold: float 
         print('OUTLIER DETECTION SUMMARY:')
         print('-' * 50)
         print(f'Total outliers detected: {results["summary"]["total_outliers"]}')
-        print(f'Rows containing outliers: {affected_rows_count} ({affected_rows_percent:.2f}% of all rows)')
+        print(f'Instances containing outliers: {affected_rows_count} ({affected_rows_percent:.2f}% of all instances)')
 
         if results['summary']['features_with_outliers']:
             print(f'Features containing outliers: {len(results["summary"]["features_with_outliers"])}')
