@@ -193,20 +193,20 @@ verbose : bool, default=True
 Returns: A dictionary containing outlier information with summary and feature-specific details
 '''
 # Features set up to trigger 'catches': categorical feature, constant numerical feature, all-NaN feature
-df_outliers = pd.DataFrame({
-    'cat_feature': ['Bob', 'Bob', 'Bob', 'Bob', 'Barbara', 'Ann', 'Bob', 'Bob', 'Bob', 'Barbara'],
-    'no_outliers': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    'one_small_outlier': [1, 1, 1, 1, 1, 1, 1, 1, 1, 10],
-    'one_large_outlier': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1000],
-    'two_small_outliers': [1, 1, 1, 1, 1, 1, 1, 1, 10, 50],
-    'two_large_outliers': [1, 1, 1, 1, 1, 1, 1, 1, 1000, 50000],
-    'large_scale': [1, 25, 50, 100, 500, 1000, 5000, 15000, 35000, 1000000],
-    'constant_feature': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    'all_missing': [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan]
-    })
+# df_outliers = pd.DataFrame({
+#     'cat_feature': ['Bob', 'Bob', 'Bob', 'Bob', 'Barbara', 'Ann', 'Bob', 'Bob', 'Bob', 'Barbara'],
+#     'no_outliers': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+#     'one_small_outlier': [1, 1, 1, 1, 1, 1, 1, 1, 1, 10],
+#     'one_large_outlier': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1000],
+#     'two_small_outliers': [1, 1, 1, 1, 1, 1, 1, 1, 10, 50],
+#     'two_large_outliers': [1, 1, 1, 1, 1, 1, 1, 1, 1000, 50000],
+#     'large_scale': [1, 25, 50, 100, 500, 1000, 5000, 15000, 35000, 1000000],
+#     'constant_feature': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+#     'all_missing': [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan]
+#     })
 
 # Test default mode first
-outlier_dict = tp.find_outliers(df_outliers)
+# outlier_dict = tp.find_outliers(df_outliers)
 
 # Test non-verbose mode
 # outlier_dict = tp.find_outliers(df_outliers, verbose=False)
@@ -219,7 +219,7 @@ outlier_dict = tp.find_outliers(df_outliers)
 # outlier_dict = tp.find_outliers(df_outliers, threshold=0.75)
 
 # Print outlier dictionary
-print(outlier_dict)
+# print(outlier_dict)
 
 '''
 Questions:
