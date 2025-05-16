@@ -200,12 +200,13 @@ df_outliers = pd.DataFrame({
     'one_large_outlier': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1000],
     'two_small_outliers': [1, 1, 1, 1, 1, 1, 1, 1, 10, 50],
     'two_large_outliers': [1, 1, 1, 1, 1, 1, 1, 1, 1000, 50000],
+    'large_scale': [1, 25, 50, 100, 500, 1000, 5000, 15000, 35000, 1000000],
     'constant_feature': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     'all_missing': [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan]
     })
 
 # Test default mode first
-# outlier_dict = tp.find_outliers(df_outliers)
+outlier_dict = tp.find_outliers(df_outliers)
 
 # Test non-verbose mode
 # outlier_dict = tp.find_outliers(df_outliers, verbose=False)
@@ -215,7 +216,7 @@ df_outliers = pd.DataFrame({
 # outlier_dict = tp.find_outliers(df_outliers, method='modified_zscore')
 
 # Test specified threshold
-outlier_dict = tp.find_outliers(df_outliers, threshold=0.75)
+# outlier_dict = tp.find_outliers(df_outliers, threshold=0.75)
 
 # Print outlier dictionary
 print(outlier_dict)
