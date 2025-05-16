@@ -866,13 +866,13 @@ def _find_outliers_core(df: pd.DataFrame, method: str = 'iqr', threshold: float 
         # Skip columns with all NaN values
         if df[column].isna().all():
             if verbose:
-                print(f'\nSkipping "{column}": All values in the feature are NaN/Missing.')
+                print(f'\nWARNING: Skipping "{column}" - All values in the feature are NaN/Missing.')
             continue
 
         # Skip columns with only one unique value
         if df[column].nunique() <= 1:
             if verbose:
-                print(f'\nSkipping "{column}": No variance is present in feature.')
+                print(f'\nWARNING: Skipping "{column}" - No variance is present in feature.')
             continue
 
         if verbose:
