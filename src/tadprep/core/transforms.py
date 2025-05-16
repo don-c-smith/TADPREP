@@ -748,6 +748,7 @@ def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
 
 
 # EXPLORATORY DATA ANALYSIS (EDA)
+
 def _find_outliers_core(df: pd.DataFrame, method: str = 'iqr', threshold: float = None,
                         verbose: bool = True) -> dict:
     """
@@ -803,10 +804,11 @@ def _find_outliers_core(df: pd.DataFrame, method: str = 'iqr', threshold: float 
 
     # Handle any case where no numerical features are present
     if not num_cols:
-        if verbose:
-            print('No numerical features found in dataframe. Outlier detection requires numerical data.')
+        print('No numerical features found in dataframe. Outlier detection requires numerical data.')
         return {
             'summary': {
+                'method': method,
+                'threshold': threshold,
                 'total_outliers': 0,
                 'affected_rows_count': 0,
                 'affected_rows_percent': 0.0,
@@ -846,6 +848,8 @@ def _find_outliers_core(df: pd.DataFrame, method: str = 'iqr', threshold: float 
     # Initialize results dictionary
     results = {
         'summary': {
+            'method': method,
+            'threshold': threshold,
             'total_outliers': 0,
             'affected_rows_count': 0,
             'affected_rows_percent': 0.0,
@@ -862,13 +866,13 @@ def _find_outliers_core(df: pd.DataFrame, method: str = 'iqr', threshold: float 
         # Skip columns with all NaN values
         if df[column].isna().all():
             if verbose:
-                print(f'Skipping "{column}": All values are NaN/Missing.')
+                print(f'\nSkipping "{column}": All values are NaN/Missing.')
             continue
 
         # Skip columns with only one unique value
         if df[column].nunique() <= 1:
             if verbose:
-                print(f'Skipping "{column}": No variance present in feature.')
+                print(f'\nSkipping "{column}": No variance present in feature.')
             continue
 
         if verbose:
@@ -945,8 +949,6 @@ def _find_outliers_core(df: pd.DataFrame, method: str = 'iqr', threshold: float 
 
             # Store feature-specific results
             results['feature_results'][column] = {
-                'method': method,
-                'method_description': method_desc,
                 'outlier_count': outlier_count,
                 'outlier_percent': outlier_percent,
                 'outlier_indices': outliers.index.tolist(),
