@@ -1,5 +1,6 @@
 import pandas as pd
 from .core.transforms import (
+    _method_list_core,
     _summary_core,
     _reshape_core,
     _find_outliers_core,
@@ -15,6 +16,23 @@ from .core.transforms import (
     _make_plots_core,
     _build_interactions_core
 )
+
+
+# OVERALL LIBRARY INFORMATION METHODS
+def method_list():
+    """
+    Prints the names and brief descriptions of all callable methods in the TADPREP library.
+
+    Parameters
+    ----------
+    None
+        This is a nullary method which functions only as an information source.
+
+    Returns
+    -------
+    None
+        This is a void method which prints information to the console.
+    """
 
 
 # DATAFRAME-LEVEL INFORMATION AND MANIPULATIONS
