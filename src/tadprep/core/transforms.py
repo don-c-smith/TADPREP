@@ -12,6 +12,117 @@ from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
 from scipy import stats
 
 
+# OVERALL LIBRARY INFORMATION METHODS
+def _method_list_core():
+    print('The TADPREP library supports the following methods:')
+
+    print('-' * 50)  # Visual separator
+    print('DATAFRAME-LEVEL INFORMATION AND MANIPULATIONS:')
+    print('-' * 50)  # Visual separator
+
+    print('summary:')
+    print("- Prints comprehensive information about a DataFrame's structure, contents, and warns of potential "
+          "data quality issues.")
+    print()
+
+    print('reshape:')
+    print('- Interactively reshapes an input DataFrame according to user specification.')
+    print('- Allows row-wise and column-wise deletion of missing values, along with dropping features.')
+    print()
+
+    print('subset:')
+    print('- Interactively subsets instances in an input DataFrame according to user specification.')
+    print('- Supports random sampling (with or without a seed), stratified sampling, and time-based instance selection '
+          'for timeseries data.')
+    print()
+
+    print('-' * 50)  # Visual separator
+    print('EXPLORATORY DATA ANALYSIS (EDA):')
+    print('-' * 50)  # Visual separator
+
+    print('find_outliers:')
+    print('- Detects outliers in numerical features of a DataFrame using a specified detection method.')
+    print('- Supports three common approaches for outlier detection: IQR-based detection, Z-score method, and the '
+          'Modified Z-score method.')
+    print()
+
+    print('find_corrs:')
+    print('- Detects highly-correlated features in a DataFrame using a specified correlation method.')
+    print('- Analyzes numerical features in the dataframe and identifies feature pairs with correlation coefficients '
+          'exceeding a specified threshold.')
+    print()
+
+    print('make_plots:')
+    print('- Interactively creates and displays plots for features in an input DataFrame.')
+    print('- Feature-level plots are created based on the data characteristics of selected features.')
+    print('- Supports visualization of numerical, categorical, and datetime features using appropriate plot types.')
+    print()
+
+    print('-' * 50)  # Visual separator
+    print('FEATURE-LEVEL INFORMATION AND MANIPULATIONS:')
+    print('-' * 50)  # Visual separator
+
+    print('rename_and_tag:')
+    print('- Interactively renames features in an input DataFrame, and allows user to tag features as ordinal or '
+          'targets, if desired.')
+    print()
+
+    print('feature_stats:')
+    print('- Displays feature-level statistics for each feature in an input DataFrame.')
+    print('- For each feature, displays missingness information and appropriate descriptive statistics based on the '
+          'feature\'s datatype (boolean, datetime, categorical, or numerical).')
+    print('- Features are automatically classified by type for appropriate statistical analysis.')
+    print()
+
+    print('impute:')
+    print('- Interactively imputes missing values in an input DataFrame using foundational imputation methods.')
+    print('- Supports mean, median, mode, constant value, random sampling, and time-series imputation based on '
+          'feature type and data characteristics.')
+    print()
+
+    print('encode:')
+    print('- Interactively encodes categorical features in an input DataFrame using specified encoding methods.')
+    print('- Supports one-hot or dummy encoding, as specified by user.')
+    print("- Searches for false-numeric features (e.g. 1/0 representations of 'Yes'/'No') and asks if they should be "
+          "treated as categorical.")
+    print()
+
+    print('scale:')
+    print('- Interactively scales numerical features in an input DataFrame using standard scaling methods.')
+    print('- Supports standard, robust, and minmax scaling methods.')
+    print()
+
+    print('transform:')
+    print('- Transforms numerical features using various mathematical transformations.')
+    print('- Applies transformations to improve data distributions for modeling, with a focus on normalization '
+          'and linearization.')
+    print('- The method analyzes data characteristics and suggests appropriate transformations based on '
+          'distribution properties.')
+    print('- Supports transformations including:')
+    print('    - Logarithmic: log, log10, log1p (for right-skewed data)')
+    print('    - Power: sqrt, square, cube, reciprocal')
+    print('    - Statistical: Box-Cox, Yeo-Johnson (for normalization)')
+    print()
+
+    print('extract_datetime:')
+    print('- Extracts useful temporal components from datetime columns in an input DataFrame.')
+    print('- Identifies datetime columns and automatically extracts standard component features (year, month, day, '
+          'dayofweek, hour, minute, quarter, dayofyear).')
+    print('- The method creates new columns with the naming pattern "{original_column}_{component}".')
+    print()
+
+    print('build_interactions:')
+    print('- Creates interaction terms between specified features in an input DataFrame.')
+    print('- The method supports two paradigms:')
+    print('    - Focused: Create specific interactions between two features (f1 and f2).')
+    print('    - Exploratory: Create all possible interactions between features in features_list.')
+    print()
+
+    print('-' * 50)  # Visual separator
+    print('END OF METHOD LIST')
+    print('-' * 50)  # Visual separator
+
+
 # DATAFRAME-LEVEL INFORMATION AND MANIPULATIONS
 def _summary_core(df: pd.DataFrame, verbose: bool = True) -> None:
     """
