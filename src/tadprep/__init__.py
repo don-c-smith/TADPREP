@@ -2,6 +2,7 @@
 
 # Import public-facing methods that users will access
 from .package import (
+    method_list,
     summary,
     find_outliers,
     find_corrs,
@@ -20,6 +21,7 @@ from .package import (
 
 # Define exposure if "from tadprep import *" is called
 __all__ = [
+    'method_list',
     'summary',
     'find_outliers',
     'find_corrs',
