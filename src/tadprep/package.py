@@ -32,7 +32,14 @@ def method_list():
     -------
     None
         This is a void method which prints information to the console.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import tadprep
+    >>> tadprep.method_list()  # Shows names and descriptions of available methods in the TADPREP library
     """
+    _method_list_core()
 
 
 # DATAFRAME-LEVEL INFORMATION AND MANIPULATIONS
