@@ -1,6 +1,7 @@
 """Core data mutation functions for TADPREP"""
 
 from .transforms import (
+    _method_list_core,
     _summary_core,
     _find_outliers_core,
     _find_corrs_core,
@@ -20,6 +21,7 @@ from .transforms import (
 )
 
 __all__ = [
+    '_method_list_core',
     '_summary_core',
     '_find_outliers_core',
     '_find_corrs_core',
