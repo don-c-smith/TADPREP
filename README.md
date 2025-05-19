@@ -138,6 +138,11 @@ data preparation process:
 - Ideal for users who want to prepare their data in a single cohesive workflow
 - This method (in essence) runs the full interactive script without the file I/O process
 
+#### Library-Level Informative Methods
+`method_list()`
+- Displays the names and brief descriptions of all callable methods supported by the TADPREP library
+- Methods are categorized by general functionality/process type
+
 #### Individual Data Preparation Methods
 
 `summary(df, verbose=True)`
