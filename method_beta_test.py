@@ -4,9 +4,31 @@ import tadprep as tp
 # This is the file we will use for beta testing of public-facing methods before subsequent debugging
 
 # Load test data
-# df = pd.read_csv(r'C:\Users\doncs\Documents\GitHub\TADPREP\data\river_data.csv')
+df = pd.read_csv(r'C:\Users\doncs\Documents\GitHub\TADPREP\data\river_data.csv')
 # Print check
 # print(df)
+
+'''
+Testing the method_list method:
+Prints the names and brief descriptions of all callable methods in the TADPREP library.
+'''
+tp.method_list()
+
+'''
+Questions:
+- Is the name of this method appropriate?
+Yes
+- Does it do what a reasonable person would expect it to do?
+Yes
+- Are we missing any major capabilities?
+No
+- Are there extraneous capabilities present in the method?
+No
+- Are all parameters/modes necessary and/or appropriate?
+N/A
+- What problems or needed changes were identified?
+'''
+
 
 '''
 Testing the df_info method:
