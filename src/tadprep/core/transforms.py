@@ -1226,20 +1226,8 @@ def _find_corrs_core(df: pd.DataFrame, method: str = 'pearson', threshold: float
             print('3. Use tadprep.reshape() to remove features with missing values from your analysis')
             print('-' * 50)
 
-        # Return an informative error dictionary instead of raising an exception
-        return {
-            'error': 'missing_values',
-            'message': 'Correlation analysis cannot be performed with missing values',
-            'features_with_missing_values': list(missing_vals.keys()),
-            'summary': {
-                'method': method,
-                'num_correlated_pairs': 0,
-                'max_correlation': None,
-                'avg_correlation': None,
-                'features_involved': []
-            },
-            'correlation_pairs': []
-        }
+        # Raise an exception instead of returning an error dictionary
+        raise ValueError('Cannot compute correlations: Missing values detected in numerical features.')
 
     # Process/procedural information for verbose mode
     if verbose:
