@@ -1227,7 +1227,7 @@ def _find_corrs_core(df: pd.DataFrame, method: str = 'pearson', threshold: float
             print('-' * 50)
 
         # Raise an exception instead of returning an error dictionary
-        raise ValueError('Cannot compute correlations: Missing values detected in numerical features.')
+        raise ValueError('Cannot compute correlations - missing values detected in numerical features.')
 
     # Process/procedural information for verbose mode
     if verbose:
