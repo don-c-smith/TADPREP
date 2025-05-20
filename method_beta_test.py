@@ -233,10 +233,10 @@ df_corrs = pd.DataFrame({
     'near_linear': [1, 8, 13, 21, 36, 40, 53, 65, 77, 89],
     'noise': [28, -70, 576, 2856, -7798, 44, -90, 49607, 1000000, -2568637],
     'cat': ['dog', 'fish', 'bear', 'cat', 'kangaroo', 'whale', 'leopard', 'mongoose', 'badger', 'elephant'],
-    # 'missing_vals': [567, 265, 476, 244, 670]
+    'missing_vals': [567, 265, 476, 244, 670, None, None, None, None, None]
 })
 # Test method's normal operation
-# corr_dict = tp.find_corrs(df_corrs)
+corr_dict = tp.find_corrs(df_corrs)
 
 # Test non-verbose operation
 # corr_dict = tp.find_corrs(df_corrs, verbose=False)
@@ -246,7 +246,7 @@ df_corrs = pd.DataFrame({
 # corr_dict = tp.find_corrs(df_corrs, method='kendall')
 
 # Test custom threshold
-corr_dict = tp.find_corrs(df_corrs, threshold=1)
+# corr_dict = tp.find_corrs(df_corrs, threshold=1)
 
 # Print correlation dictionary
 print(corr_dict)
