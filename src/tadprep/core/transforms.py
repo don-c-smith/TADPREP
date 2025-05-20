@@ -1210,6 +1210,37 @@ def _find_corrs_core(df: pd.DataFrame, method: str = 'pearson', threshold: float
             'correlation_pairs': []
         }
 
+    # Check for missing values in numerical features
+    missing_vals = {col: df[col].isna().sum() for col in num_cols if df[col].isna().any()}
+
+    if missing_vals:
+        if verbose:
+            print('-' * 50)
+            print('ERROR: Missing values detected in numerical features:')
+            for col, count in missing_vals.items():
+                print(f'  - {col}: {count} missing values')
+            print('\nCorrelation analysis requires complete data with no missing values.')
+            print('\nSuggested solutions:')
+            print('1. Use tadprep.impute() to impute missing values')
+            print('2. Use tadprep.reshape() to drop instances with missing values')
+            print('3. Use tadprep.reshape() to remove features with missing values from your analysis')
+            print('-' * 50)
+
+        # Return an informative error dictionary instead of raising an exception
+        return {
+            'error': 'missing_values',
+            'message': 'Correlation analysis cannot be performed with missing values',
+            'features_with_missing_values': list(missing_vals.keys()),
+            'summary': {
+                'method': method,
+                'num_correlated_pairs': 0,
+                'max_correlation': None,
+                'avg_correlation': None,
+                'features_involved': []
+            },
+            'correlation_pairs': []
+        }
+
     # Process/procedural information for verbose mode
     if verbose:
         print('-' * 50)
