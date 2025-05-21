@@ -1453,7 +1453,7 @@ def _make_plots_core(df: pd.DataFrame, features_to_plot: list[str] | None = None
         print('-' * 50)
         print('Available Plot Types:')
         print('-' * 50)
-        print('\nFor Numerical Features:')
+        print('For Numerical Features:')
         print('- Histogram: Shows the overall distribution of a numerical feature')
         print('- Box Plot: Shows the quartiles, median, and outliers of a numerical feature')
         print('- Violin Plot: Similar to a box plot, but also shows density estimates')
