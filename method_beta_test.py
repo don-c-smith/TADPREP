@@ -4,7 +4,7 @@ import tadprep as tp
 # This is the file we will use for beta testing of public-facing methods before subsequent debugging
 
 # Load test data
-# df = pd.read_csv(r'C:\Users\doncs\Documents\GitHub\TADPREP\data\river_data.csv')
+df = pd.read_csv(r'C:\Users\doncs\Documents\GitHub\TADPREP\data\river_data.csv')
 # Print check
 # print(df)
 
@@ -224,18 +224,18 @@ Returns: A dictionary containing correlation information with summary statistics
 # Make sure 'at least two numerical features must be present' catch fires
 # tp.find_corrs(df_corrs_errors)  # Error was caught
 
-# Build useful data
-df_corrs = pd.DataFrame({
-    'linear': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    'linear_double': [2, 4, 6, 8, 10, 12, 14, 16, 18, 20],
-    'linear_neg': [-1, -2, -3, -4, -5, -6, -7, -8, -9, -10],
-    'near_linear': [1, 8, 13, 21, 36, 40, 53, 65, 77, 89],
-    'noise': [28, -70, 576, 2856, -7798, 44, -90, 49607, 1000000, -2568637],
-    'cat': ['dog', 'fish', 'bear', 'cat', 'kangaroo', 'whale', 'leopard', 'mongoose', 'badger', 'elephant'],
-    'missing_vals': [567, 265, 476, 244, 670, None, None, None, None, None]
-})
-# Test method's normal operation
-corr_dict = tp.find_corrs(df_corrs)
+# # Build useful data
+# df_corrs = pd.DataFrame({
+#     'linear': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+#     'linear_double': [2, 4, 6, 8, 10, 12, 14, 16, 18, 20],
+#     'linear_neg': [-1, -2, -3, -4, -5, -6, -7, -8, -9, -10],
+#     'near_linear': [1, 8, 13, 21, 36, 40, 53, 65, 77, 89],
+#     'noise': [28, -70, 576, 2856, -7798, 44, -90, 49607, 1000000, -2568637],
+#     'cat': ['dog', 'fish', 'bear', 'cat', 'kangaroo', 'whale', 'leopard', 'mongoose', 'badger', 'elephant'],
+#     'missing_vals': [567, 265, 476, 244, 670, None, None, None, None, None]
+# })
+# # Test method's normal operation
+# corr_dict = tp.find_corrs(df_corrs)
 
 # Test non-verbose operation
 # corr_dict = tp.find_corrs(df_corrs, verbose=False)
@@ -248,7 +248,7 @@ corr_dict = tp.find_corrs(df_corrs)
 # corr_dict = tp.find_corrs(df_corrs, threshold=1)
 
 # Print correlation dictionary
-print(corr_dict)
+# print(corr_dict)
 
 '''
 Questions:
