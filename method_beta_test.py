@@ -189,7 +189,6 @@ Yes
     - Enumerate features to drop rows by and have user pass indices, not feature names
     - BUG: Generalized degree of population, default decimal-percent throwing traceback (final_thresh feature)
     - Move explanation out of input dependence, have it run if verbose is true
-    
 '''
 
 
@@ -271,24 +270,34 @@ dropping features with missing values using either the reshape or impute methods
 
 
 '''
-Testing the find_outliers method:
-This method detects outliers in numerical features of a DataFrame using a specified detection method.
-Parameters:
-method : str, default='iqr'
-    Outlier detection method to use.
-    Options:
-      - 'iqr': Interquartile Range (default)
-      - 'zscore': Standard Z-score
-      - 'modified_zscore': Modified Z-score
+Testing the make_plots method:
+This method interactively creates and displays plots for features in a DataFrame.
+Parameters
+----------
+df : pandas.DataFrame
+    The DataFrame containing features to plot.
+features_to_plot : list[str] | None, default=None
+    Optional list of specific features to consider for plotting. If None, the
+    function will use all features in the DataFrame.
 
-threshold : float, default=None
-    Threshold value for outlier detection. If None, uses method-specific defaults:
-      - For IQR: 1.5 × IQR
-      - For Z-score: 3.0 standard deviations
-      - For Modified Z-score: 3.5
+Returns
+-------
+None
+    This function displays plots but does not return any values.
+'''
+# Test plotting
 
-verbose : bool, default=True
-    Whether to print detailed information about outliers
+'''
+Questions:
+- Is the name of this method appropriate?
 
-Returns: A dictionary containing outlier information with summary and feature-specific details
+- Does it do what a reasonable person would expect it to do?
+
+- Are we missing any major capabilities? Is this all the reshaping capacity we usefully need?
+
+- Are there extraneous capabilities present in the method?
+
+- Are all parameters/modes necessary and/or appropriate?
+
+- What problems or needed changes were identified?
 '''
