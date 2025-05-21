@@ -286,6 +286,13 @@ None
     This function displays plots but does not return any values.
 '''
 # Test plotting
+# Features are date, season, volume, avg_flag, clarity, samples, traffic
+
+# Test first with no passed feature list
+tp.make_plots(df)
+
+# Test with passed feature list
+tp.make_plots(df, features_to_plot=['season', 'volume', 'clarity'])
 
 '''
 Questions:
