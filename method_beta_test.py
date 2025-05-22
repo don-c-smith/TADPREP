@@ -297,14 +297,15 @@ tp.make_plots(df, features_to_plot=['season', 'volume', 'clarity'])
 '''
 Questions:
 - Is the name of this method appropriate?
-
+I'd rather call it plot_features
 - Does it do what a reasonable person would expect it to do?
-
-- Are we missing any major capabilities? Is this all the reshaping capacity we usefully need?
-
+Yes
+- Are we missing any major capabilities? Is this all the plotting capacity we usefully need?
+I think at a top level, yes. More complex plots should be hand-coded. This is an EDA tool.
 - Are there extraneous capabilities present in the method?
-
+I don't think so.
 - Are all parameters/modes necessary and/or appropriate?
-
+Yes. The list-to-plot is useful if you have a lot of features or some prior knowledge of what you want to look at.
 - What problems or needed changes were identified?
+None
 '''
