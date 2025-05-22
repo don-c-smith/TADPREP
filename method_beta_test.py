@@ -289,10 +289,10 @@ None
 # Features are date, season, volume, avg_flag, clarity, samples, traffic
 
 # Test first with no passed feature list
-tp.make_plots(df)
+# tp.make_plots(df)
 
 # Test with passed feature list
-tp.make_plots(df, features_to_plot=['season', 'volume', 'clarity'])
+# tp.make_plots(df, features_to_plot=['season', 'volume', 'clarity'])
 
 '''
 Questions:
@@ -308,4 +308,63 @@ I don't think so.
 Yes. The list-to-plot is useful if you have a lot of features or some prior knowledge of what you want to look at.
 - What problems or needed changes were identified?
 None
+'''
+
+'''
+Testing the rename_and_tag method:
+This method interactively renames features and allows the user to tag them as ordinal or target features, if desired.
+Parameters
+----------
+df : pandas.DataFrame
+    The DataFrame whose features need to be renamed and/or tagged
+verbose : bool, default = True
+    Controls whether detailed process information is displayed
+tag_features : default = False
+    Controls whether activate the feature-tagging process is activated
+
+Returns
+-------
+pandas.DataFrame
+    The DataFrame with renamed/tagged features
+
+
+'Bad' input which should be tried to check for 'catches' when renaming features are new feature names which:
+- Contain spaces
+- Contain special characters (e.g. @, %, &)
+- Contain double underscores
+- Start with an integer
+- Contains a python keyword (e.g. class, True, for)
+
+'Poor practice' input which should be tried to check for 'catches' when renaming features are new feature names which:
+- Are all uppercase
+- Are quite short (<=2 characters)
+- Are quite long (>=30 characters)
+'''
+
+# Testing default settings first
+df_renamed = tp.rename_and_tag(df, verbose=True, tag_features=False)
+
+# Testing non-verbose operation
+# df_renamed = tp.rename_and_tag(df, verbose=False, tag_features=False)
+
+# Testing verbose feature tagging
+# df_renamed = tp.rename_and_tag(df, verbose=True, tag_features=True)
+
+# Testing non-verbose feature tagging
+# df_renamed = tp.rename_and_tag(df, verbose=False, tag_features=True)
+
+print(df_renamed)
+'''
+Questions:
+- Is the name of this method appropriate?
+
+- Does it do what a reasonable person would expect it to do?
+
+- Are we missing any major capabilities? Is this all the subset capacity we usefully need?
+
+- Are there extraneous capabilities present in the method?
+
+- Are all parameters/modes necessary and/or appropriate?
+
+- What problems or needed changes were identified?
 '''
