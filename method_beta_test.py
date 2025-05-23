@@ -368,3 +368,6 @@ Questions:
 
 - What problems or needed changes were identified?
 '''
+
+# NOTE: I can use the same 'river' data to test feature_stats and scale
+# However, I will need to import the sparse dataframe to test impute
