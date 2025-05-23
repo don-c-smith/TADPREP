@@ -371,3 +371,8 @@ Questions:
 
 # NOTE: I can use the same 'river' data to test feature_stats and scale
 # However, I will need to import the sparse dataframe to test impute
+
+# Load sparse data
+df_sparse = pd.read_csv(r'C:\Users\doncs\Documents\GitHub\TADPREP\data\sample_data_sparse.csv')
+# Print check
+# print(df_sparse)
