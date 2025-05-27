@@ -379,3 +379,44 @@ I believe so
 df_sparse = pd.read_csv(r'C:\Users\doncs\Documents\GitHub\TADPREP\data\sample_data_sparse.csv')
 # Print check
 # print(df_sparse)
+
+'''
+Testing the feature_stats method:
+This method displays feature-level statistics for each feature in the DataFrame.
+
+For each feature, displays missingness information and appropriate descriptive statistics
+based on the feature's datatype (boolean, datetime, categorical, or numerical).
+Features are automatically classified by type for appropriate statistical analysis.
+
+Parameters
+----------
+df : pandas.DataFrame
+    The DataFrame to analyze
+verbose : bool, default=True
+    Whether to print detailed statistical information and more extensive visual formatting
+
+Returns
+-------
+None
+    This is a void method that prints information to the console.
+'''
+# Testing verbose mode first
+tp.feature_stats(df, verbose=True)
+
+# Testing non-verbose mode
+# tp.feature_stats(df, verbose=False)
+
+'''
+Questions:
+- Is the name of this method appropriate?
+
+- Does it do what a reasonable person would expect it to do?
+
+- Are we missing any major capabilities? Is this all the renaming capacity we usefully need?
+
+- Are there extraneous capabilities present in the method?
+
+- Are all parameters/modes necessary and/or appropriate?
+
+- What problems or needed changes were identified?
+'''
