@@ -1399,7 +1399,8 @@ def _make_plots_core(df: pd.DataFrame, features_to_plot: list[str] | None = None
             num_cols.append(col)
 
     # Try to convert string columns to datetime if they look like dates
-    for col in cat_cols[:]:  # Use a copy to iterate
+    cols_to_check = cat_cols[:] if features_to_plot is None else [col for col in cat_cols if col in features_to_plot]
+    for col in cols_to_check:
         if col not in datetime_cols:
             try:
                 # Test conversion on first few non-null values
