@@ -307,7 +307,8 @@ I don't think so.
 - Are all parameters/modes necessary and/or appropriate?
 Yes. The list-to-plot is useful if you have a lot of features or some prior knowledge of what you want to look at.
 - What problems or needed changes were identified?
-None
+    - The "feature 'feature_name' contains datetime-like values and will be treated as datetime" message should only 
+        print if a list of features is passed of one of the passed features is datetime.
 '''
 
 '''
@@ -342,7 +343,7 @@ pandas.DataFrame
 '''
 
 # Testing default settings first
-df_renamed = tp.rename_and_tag(df, verbose=True, tag_features=False)
+# df_renamed = tp.rename_and_tag(df, verbose=True, tag_features=False)
 
 # Testing non-verbose operation
 # df_renamed = tp.rename_and_tag(df, verbose=False, tag_features=False)
@@ -353,20 +354,22 @@ df_renamed = tp.rename_and_tag(df, verbose=True, tag_features=False)
 # Testing non-verbose feature tagging
 # df_renamed = tp.rename_and_tag(df, verbose=False, tag_features=True)
 
-print(df_renamed)
+# print(df_renamed)
 '''
 Questions:
 - Is the name of this method appropriate?
-
+Yes
 - Does it do what a reasonable person would expect it to do?
-
-- Are we missing any major capabilities? Is this all the subset capacity we usefully need?
-
+Yes
+- Are we missing any major capabilities? Is this all the renaming capacity we usefully need?
+I think so
 - Are there extraneous capabilities present in the method?
-
+I'm still not sure the tagging feature is needed.
 - Are all parameters/modes necessary and/or appropriate?
-
+I believe so
 - What problems or needed changes were identified?
+    - We need to add a 'finished with tagging?' check for the ordinal and target tagging steps in case someone forgets 
+        to enter all of the features they want to tag
 '''
 
 # NOTE: I can use the same 'river' data to test feature_stats and scale
