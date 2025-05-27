@@ -1945,59 +1945,73 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
         else:
             print('\nOrdinal feature tagging:')
 
-        print('\nFeatures:')
-        for col_idx, column in enumerate(df.columns, 1):
-            print(f'{col_idx}. {column}')
+        # Wrap ordinal tagging in a loop for verbose mode to allow multiple rounds of tagging
+        ordinal_tagging_complete = False
+        while not ordinal_tagging_complete:
+            print('\nFeatures:')
+            for col_idx, column in enumerate(df.columns, 1):
+                print(f'{col_idx}. {column}')
 
-        while True:  # We can justify 'while True' because we have a cancel-out input option
-            try:
-                ord_input = input('\nEnter the index integers of ordinal features (comma-separated), enter "S" to skip '
-                                  'this step, or enter "E" to exit the renaming process: ')
+            while True:  # We can justify 'while True' because we have a cancel-out input option
+                try:
+                    ord_input = input(
+                        '\nEnter the index integers of ordinal features (comma-separated), enter "S" to skip '
+                        'this step, or enter "E" to exit the ordinal tagging process: ')
 
-                # Check for user skip
-                if ord_input.lower() == 's':
+                    # Check for user skip
+                    if ord_input.lower() == 's':
+                        if verbose:
+                            print('Ordinal feature tagging skipped.')  # Note the cancellation
+                        ordinal_tagging_complete = True
+                        break  # Exit the loop
+
+                    # Check for user process exit
+                    elif ord_input.lower() == 'e':
+                        if verbose:
+                            print('Exiting process. Dataframe was not modified.')
+                        return df
+
+                    ord_idx_list = [int(idx.strip()) for idx in ord_input.split(',')]  # Create list of index integers
+
+                    # Validate that all entered index integers are in range
+                    if not all(1 <= idx <= len(df.columns) for idx in ord_idx_list):
+                        raise ValueError('Some feature indices are out of range.')
+
+                    ord_names_pretag = [df.columns[idx - 1] for idx in ord_idx_list]  # Create list of pretag names
+
+                    # Generate mapper for renaming columns with '_ord' suffix
+                    ord_rename_map = {name: f'{name}_ord' for name in ord_names_pretag if not name.endswith('_ord')}
+
+                    # Validate that tags for the selected columns are not already present (i.e. done pre-import)
+                    if not ord_rename_map:  # If the mapper is empty
+                        print('WARNING: All selected features are already tagged as ordinal.')  # Warn the user
+                        print('Skipping ordinal tagging.')
+                        ordinal_tagging_complete = True
+                        break
+
+                    df.rename(columns=ord_rename_map, inplace=True)  # Perform tagging
+                    # Track ordinal tagging operations
+                    for old_name, new_name in ord_rename_map.items():
+                        rename_tracker.append({'old_name': old_name, 'new_name': new_name, 'type': 'ordinal_tag'})
+
+                    # Print ordinal tagging summary message in verbose mode only
                     if verbose:
-                        print('Ordinal feature tagging skipped.')  # Note the cancellation
-                    break  # Exit the loop
-
-                # Check for user process exit
-                elif ord_input.lower() == 'e':
-                    if verbose:
-                        print('Exiting process. Dataframe was not modified.')
-                    return df
-
-                ord_idx_list = [int(idx.strip()) for idx in ord_input.split(',')]  # Create list of index integers
-
-                # Validate that all entered index integers are in range
-                if not all(1 <= idx <= len(df.columns) for idx in ord_idx_list):
-                    raise ValueError('Some feature indices are out of range.')
-
-                ord_names_pretag = [df.columns[idx - 1] for idx in ord_idx_list]  # Create list of pretag names
-
-                # Generate mapper for renaming columns with '_ord' suffix
-                ord_rename_map = {name: f'{name}_ord' for name in ord_names_pretag if not name.endswith('_ord')}
-
-                # Validate that tags for the selected columns are not already present (i.e. done pre-import)
-                if not ord_rename_map:  # If the mapper is empty
-                    print('WARNING: All selected features are already tagged as ordinal.')  # Warn the user
-                    print('Skipping ordinal tagging.')
+                        print('-' * 50)  # Visual separator
+                        print(f'Tagged the following features as ordinal: {", ".join(ord_rename_map.keys())}')
                     break
 
-                df.rename(columns=ord_rename_map, inplace=True)  # Perform tagging
-                # Track ordinal tagging operations
-                for old_name, new_name in ord_rename_map.items():
-                    rename_tracker.append({'old_name': old_name, 'new_name': new_name, 'type': 'ordinal_tag'})
+                # Catch invalid input
+                except ValueError as exc:
+                    print(f'Invalid input: {exc}')
+                    continue
 
-                # Print ordinal tagging summary message in verbose mode only
-                if verbose:
-                    print('-' * 50)  # Visual separator
-                    print(f'Tagged the following features as ordinal: {", ".join(ord_rename_map.keys())}')
-                break
-
-            # Catch invalid input
-            except ValueError as exc:
-                print(f'Invalid input: {exc}')
-                continue
+            # In verbose mode, ask if user is finished with ordinal tagging
+            if verbose and not ordinal_tagging_complete:
+                finished_input = input('\nAre you finished tagging ordinal features? (Y/N): ')
+                if finished_input.lower() == 'y':
+                    ordinal_tagging_complete = True
+            elif not verbose:
+                ordinal_tagging_complete = True
 
         if verbose:
             print('-' * 50)  # Visual separator
@@ -2010,61 +2024,76 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
         else:
             print('\nTarget feature tagging:')
 
-        print('\nFeatures:')
-        for col_idx, column in enumerate(df.columns, 1):
-            print(f'{col_idx}. {column}')
+        # Wrap target tagging in a loop for verbose mode to allow multiple rounds of tagging
+        target_tagging_complete = False
+        while not target_tagging_complete:
+            print('\nFeatures:')
+            for col_idx, column in enumerate(df.columns, 1):
+                print(f'{col_idx}. {column}')
 
-        while True:  # We can justify 'while True' because we have a cancel-out input option
-            try:
-                target_input = input('\nEnter the index integers of target features (comma-separated), enter "S" to '
-                                     'skip this step, or enter "E" to exit the renaming process: ')
+            while True:  # We can justify 'while True' because we have a cancel-out input option
+                try:
+                    target_input = input(
+                        '\nEnter the index integers of target features (comma-separated), enter "S" to '
+                        'skip this step, or enter "E" to exit the target tagging process: ')
 
-                # Check for user cancellation
-                if target_input.lower() == 's':
+                    # Check for user cancellation
+                    if target_input.lower() == 's':
+                        if verbose:
+                            print('Target feature tagging skipped.')
+                        target_tagging_complete = True
+                        break
+
+                    # Check for user process exit
+                    elif target_input.lower() == 'e':
+                        if verbose:
+                            print('Exiting process. Dataframe was not modified.')
+                        return df
+
+                    target_idx_list = [int(idx.strip()) for idx in
+                                       target_input.split(',')]  # Create list of index integers
+
+                    # Validate that all entered index integers are in range
+                    if not all(1 <= idx <= len(df.columns) for idx in target_idx_list):
+                        raise ValueError('Some feature indices are out of range.')
+
+                    target_names_pretag = [df.columns[idx - 1] for idx in target_idx_list]  # List of pretag names
+
+                    # Generate mapper for renaming columns with '_target' suffix
+                    target_rename_map = {name: f'{name}_target' for name in target_names_pretag if
+                                         not name.endswith('_target')}
+
+                    # Validate that tags for the selected columns are not already present (i.e. done pre-import)
+                    if not target_rename_map:  # If the mapper is empty
+                        print('WARNING: All selected features are already tagged as targets.')  # Warn the user
+                        print('Skipping target tagging.')
+                        target_tagging_complete = True
+                        break
+
+                    df = df.rename(columns=target_rename_map)  # Perform tagging
+                    # Track target tagging operations
+                    for old_name, new_name in target_rename_map.items():
+                        rename_tracker.append({'old_name': old_name, 'new_name': new_name, 'type': 'target_tag'})
+
+                    # Print target tagging summary message in verbose mode only
                     if verbose:
-                        print('Target feature tagging skipped.')
+                        print('-' * 50)  # Visual separator
+                        print(f'Tagged the following features as targets: {", ".join(target_rename_map.keys())}')
+                        print('-' * 50)  # Visual separator
                     break
 
-                # Check for user process exit
-                elif target_input.lower() == 'e':
-                    if verbose:
-                        print('Exiting process. Dataframe was not modified.')
-                    return df
+                # Catch invalid input
+                except ValueError as exc:
+                    print(f'Invalid input: {exc}')
+                    continue  # Restart the loop
 
-                target_idx_list = [int(idx.strip()) for idx in target_input.split(',')]  # Create list of index integers
-
-                # Validate that all entered index integers are in range
-                if not all(1 <= idx <= len(df.columns) for idx in target_idx_list):
-                    raise ValueError('Some feature indices are out of range.')
-
-                target_names_pretag = [df.columns[idx - 1] for idx in target_idx_list]  # List of pretag names
-
-                # Generate mapper for renaming columns with '_target' suffix
-                target_rename_map = {name: f'{name}_target' for name in target_names_pretag if
-                                     not name.endswith('_target')}
-
-                # Validate that tags for the selected columns are not already present (i.e. done pre-import)
-                if not target_rename_map:  # If the mapper is empty
-                    print('WARNING: All selected features are already tagged as targets.')  # Warn the user
-                    print('Skipping target tagging.')
-                    break
-
-                df = df.rename(columns=target_rename_map)  # Perform tagging
-                # Track target tagging operations
-                for old_name, new_name in target_rename_map.items():
-                    rename_tracker.append({'old_name': old_name, 'new_name': new_name, 'type': 'target_tag'})
-
-                # Print ordinal tagging summary message in verbose mode only
-                if verbose:
-                    print('-' * 50)  # Visual separator
-                    print(f'Tagged the following features as targets: {", ".join(target_rename_map.keys())}')
-                    print('-' * 50)  # Visual separator
-                break
-
-            # Catch invalid input
-            except ValueError as exc:
-                print(f'Invalid input: {exc}')
-                continue  # Restart the loop
+            # In verbose mode, ask if user is finished with target tagging
+            if verbose and not target_tagging_complete:
+                finished_input = input('\nAre you finished tagging target features? (Y/N): ')
+                if finished_input.lower() == 'y':
+                    target_tagging_complete = True
+            elif not verbose:
+                target_tagging_complete = True
 
     if verbose and rename_tracker:  # Only show summary if verbose mode is active and changes were made
         print('\nSUMMARY OF CHANGES:')
