@@ -172,8 +172,9 @@ def find_outliers(df: pd.DataFrame, method: str = 'iqr', threshold: float = None
     """
     Detects outliers in numerical features of a DataFrame using a specified detection method.
 
-    Analyzes numerical features in the dataframe and identifies outliers using the specified detection
-    method. Supports three common approaches for outlier detection: IQR-based detection, Z-score method, and
+    Analyzes numerical features in the dataframe and identifies outliers using the specified detection method.
+
+    Supports three common approaches for outlier detection: IQR-based detection, Z-score method, and
     Modified Z-score method.
 
     Parameters
@@ -223,9 +224,11 @@ def find_corrs(df: pd.DataFrame, method: str = 'pearson', threshold: float = 0.8
     """
     Detects highly-correlated features in a DataFrame using the specified correlation method.
 
-    Analyzes numerical features in the dataframe and identifies feature pairs with correlation
-    coefficients exceeding the specified threshold. High correlations often indicate redundant
-    features that could be simplified or removed to improve model performance and interpretability.
+    Analyzes numerical features in the dataframe and identifies feature pairs with correlation coefficients exceeding
+    the specified threshold.
+
+    High correlations often indicate redundant features that could be simplified or removed to improve model
+    performance and interpretability.
 
     Parameters
     ----------
@@ -298,17 +301,18 @@ def make_plots(df: pd.DataFrame, features_to_plot: list[str] | None = None) -> N
     """
     Interactively creates and displays plots for features in a DataFrame.
 
-    This function guides users through the process of creating feature-level plots
-    based on the data characteristics of selected features. It supports visualization
-    of numerical, categorical, and datetime features using appropriate plot types.
+    This method guides users through the process of creating feature-level plots based on the data characteristics
+    of the user-selected features.
+
+    It supports visualizations of numerical, categorical, and datetime features using appropriate plot types.
 
     Parameters
     ----------
     df : pandas.DataFrame
         The DataFrame containing features to plot.
     features_to_plot : list[str] | None, default=None
-        Optional list of specific features to consider for plotting. If None, the
-        function will use all features in the DataFrame.
+        Optional list of specific features to consider for plotting. If None, the function will use all features
+        in the DataFrame.
 
     Returns
     -------
@@ -337,8 +341,8 @@ def make_plots(df: pd.DataFrame, features_to_plot: list[str] | None = None) -> N
     - For two features: scatter plots, line plots, heat maps, bar plots
     - For three features: scatter plots with hue, line plots with hue, pair plots
 
-    Plot types are suggested based on feature data types (numerical, categorical, datetime),
-    and the user can select which plot type to create.
+    Plot types are suggested based on feature data types (numerical, categorical, datetime), and the user can select
+    which plot type to create.
     """
     # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
@@ -403,8 +407,9 @@ def feature_stats(df: pd.DataFrame, verbose: bool = True) -> None:
     """
     Displays feature-level statistics for each feature in the DataFrame.
 
-    For each feature, displays missingness information and appropriate descriptive statistics
-    based on the feature's datatype (boolean, datetime, categorical, or numerical).
+    For each feature, displays missingness information and appropriate descriptive statistics based on the feature's
+    datatype (boolean, datetime, categorical, or numerical).
+
     Features are automatically classified by type for appropriate statistical analysis.
 
     Parameters
@@ -443,7 +448,7 @@ def feature_stats(df: pd.DataFrame, verbose: bool = True) -> None:
 
 def impute(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = False) -> pd.DataFrame:
     """
-    Interactively imputes missing values in the DataFrame using simple imputation methods.
+    Interactively imputes missing values in the DataFrame using user-specified simple imputation methods.
 
     Parameters
     ----------
@@ -487,7 +492,7 @@ def encode(
     preserve_features: bool = False
 ) -> pd.DataFrame:
     """
-    Interactively encodes categorical features in the DataFrame using specified encoding methods.
+    Interactively encodes categorical features in the DataFrame using user-specified encoding methods.
 
     Parameters
     ----------
@@ -642,9 +647,9 @@ def transform(
     """
     Transforms numerical features using various mathematical transformations.
 
-    Applies transformations to improve data distributions for modeling, with a focus on
-    normalization and linearization. The function analyzes data characteristics and
-    suggests appropriate transformations based on distribution properties.
+    Applies transformations to improve data distributions for modeling, with a focus on normalization and linearization.
+
+    The method analyzes data characteristics and suggests appropriate transformations based on distribution properties.
 
     Supports transformations including:
     - Logarithmic: log, log10, log1p (for right-skewed data)
@@ -729,9 +734,10 @@ def extract_datetime(
     """
     Extracts useful features from datetime columns in a dataframe.
 
-    This function identifies datetime columns and automatically extracts standard component
-    features (year, month, day, dayofweek, hour, minute, quarter, dayofyear) for each datetime column.
-    It creates new columns with the naming pattern '{original_column}_{component}'.
+    The method identifies datetime columns and automatically extracts standard component features
+    (year, month, day, dayofweek, hour, minute, quarter, dayofyear) for each datetime column.
+
+    It then creates new extracted component columns using the naming pattern '{original_column}_{component}'.
 
     Parameters
     ----------
@@ -811,9 +817,9 @@ def build_interactions(
     preserve_features: bool = True
 ) -> pd.DataFrame:
     """
-    Creates interaction terms between specified features in a DataFrame.
+    Creates mathematical interaction terms between user-specified features in a DataFrame.
 
-    Supports two paradigms:
+    Supports two UX paradigms:
     - Focused: Create specific interactions between two features (f1 and f2)
     - Exploratory: Create all possible interactions between features in features_list
 
