@@ -372,14 +372,8 @@ I believe so
         to enter all of the features they want to tag
 '''
 
-# NOTE: I can use the same 'river' data to test feature_stats and scale
+# NOTE: I can use the same 'river' data to test feature_stats, encode, and scale
 # However, I will need to import the sparse dataframe to test impute
-
-# Load sparse data
-df_sparse = pd.read_csv(r'C:\Users\doncs\Documents\GitHub\TADPREP\data\sample_data_sparse.csv')
-# Print check
-# print(df_sparse)
-
 '''
 Testing the feature_stats method:
 This method displays feature-level statistics for each feature in the DataFrame.
@@ -401,7 +395,7 @@ None
     This is a void method that prints information to the console.
 '''
 # Testing verbose mode first
-tp.feature_stats(df, verbose=True)
+# tp.feature_stats(df, verbose=True)
 
 # Testing non-verbose mode
 # tp.feature_stats(df, verbose=False)
@@ -424,3 +418,54 @@ I should consider whether the information provided in non-verbose mode is TOO sp
     - Line break needed in between kurtosis and coefficient of variation
     - Line break needed in between each feature, i.e. before the hashes appearing before "key values for..." text
 '''
+
+'''
+Testing the encode method:
+Interactively encodes categorical features in the DataFrame using specified encoding methods.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The DataFrame containing features to encode.
+    features_to_encode : list[str] | None, default=None
+        Optional list of features to encode - if None, method will help identify categorical features.
+    verbose : bool, default=True
+        Controls whether detailed guidance and explanations are displayed.
+    skip_warnings : bool, default=False
+        Controls whether all best-practice-related warnings about encoding are skipped.
+    preserve_features : bool, default=False
+        Whether to keep original features in the DataFrame alongside encoded ones.
+        When True, original categorical columns are retained after encoding.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The DataFrame with encoded categorical features
+'''
+# NOTE: There are many different permutations of this method in terms of arguments that need to be tested
+
+# Default settings first
+df_encoded = tp.encode(df, features_to_encode=None, verbose=True, skip_warnings=False, preserve_features=False)
+
+print(df_encoded)  # Print check
+
+'''
+Questions:
+- Is the name of this method appropriate?
+
+- Does it do what a reasonable person would expect it to do?
+
+- Are we missing any major capabilities? Is this all the encoding capacity we usefully need?
+
+- Are there extraneous capabilities present in the method?
+
+- Are all parameters/modes necessary and/or appropriate?
+
+- What problems or needed changes were identified?
+    -
+'''
+
+# Load sparse data
+df_sparse = pd.read_csv(r'C:\Users\doncs\Documents\GitHub\TADPREP\data\sample_data_sparse.csv')
+# Print check
+# print(df_sparse)
