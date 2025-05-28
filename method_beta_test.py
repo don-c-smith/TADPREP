@@ -409,14 +409,18 @@ tp.feature_stats(df, verbose=True)
 '''
 Questions:
 - Is the name of this method appropriate?
-
+Yes
 - Does it do what a reasonable person would expect it to do?
-
-- Are we missing any major capabilities? Is this all the renaming capacity we usefully need?
-
+Yes
+- Are we missing any major capabilities? Is this all the descriptive stats capacity we usefully need?
+I think we're good.
 - Are there extraneous capabilities present in the method?
-
+I don't think so.
 - Are all parameters/modes necessary and/or appropriate?
-
+I should consider whether the information provided in non-verbose mode is TOO sparse/limited.
 - What problems or needed changes were identified?
+    - Add "of 1" to the end of high entropy text parenthetical
+    - Move note about what IQR is to *after* the IQR value is printed
+    - Line break needed in between kurtosis and coefficient of variation
+    - Line break needed in between each feature, i.e. before the hashes appearing before "key values for..." text
 '''
