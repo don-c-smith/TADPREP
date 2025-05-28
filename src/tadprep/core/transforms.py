@@ -2333,6 +2333,7 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
     def show_key_vals(column: str, df: pd.DataFrame, feature_type: str):
         """This helper function calculates and prints key values and missingness info at the feature level."""
         if verbose:
+            print()
             print('-' * 50)
             print(f'Key values for {feature_type} feature "{column}":')
             print('-' * 50)
@@ -2412,7 +2413,7 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
                                 print(f'This datetime feature appears to be organized at the "{level}" level.')
 
                             else:
-                                print(f'This datetime feature\'s temporal aggregation level is unknown.')
+                                print(f'This datetime feature\'s temporal aggregation level cannot be assessed.')
                     except (AttributeError, TypeError, IndexError):
                         pass
 
@@ -2458,7 +2459,7 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
                                   f'(Where 0=constant, 1=uniform distribution)')
                             print('\nExplanation: Entropy measures the unpredictability of the feature\'s values.')
                             print('Low entropy (near 0) means the feature is highly predictable or skewed.')
-                            print('High entropy (near the maximum) means values are evenly distributed.')
+                            print('High entropy (near the maximum value of 1) means the feature is evenly distributed.')
 
                 if verbose:
                     if len(value_counts) <= 10:
@@ -2510,8 +2511,8 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
                     # Provide quartile information
                     print(f'25th percentile: {format_numerics(stats["25%"])}')
                     print(f'75th percentile: {format_numerics(stats["75%"])}')
-                    print('NOTE: The Interquartile range (IQR) represents the middle 50% of the data.')
                     print(f'IQR: {format_numerics(stats["75%"] - stats["25%"])}')
+                    print('NOTE: The Interquartile range (IQR) represents the middle 50% of the data.')
 
                     # Provide skewness
                     print('\nCalculating skew...')
@@ -2540,7 +2541,7 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
                     # Coefficient of variation
                     if stats["mean"] != 0:
                         cv = stats["std"] / stats["mean"]
-                        print(f'Coefficient of Variation (CV): {format_numerics(cv)}')
+                        print(f'\nCoefficient of Variation (CV): {format_numerics(cv)}')
                         print(f'NOTE: The CV of a feature indicates its relative variability across the dataset.')
 
                         # Contextual interpretation for feature-level variability
