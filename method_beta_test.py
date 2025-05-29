@@ -452,11 +452,11 @@ print(df_encoded)  # Print check
 '''
 Questions:
 - Is the name of this method appropriate?
-
+Yes
 - Does it do what a reasonable person would expect it to do?
-
+Yes
 - Are we missing any major capabilities? Is this all the encoding capacity we usefully need?
-
+I think we're good.
 - Are there extraneous capabilities present in the method?
 
 - Are all parameters/modes necessary and/or appropriate?
