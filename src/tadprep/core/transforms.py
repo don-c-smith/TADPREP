@@ -3222,7 +3222,7 @@ def _encode_core(
                     print('This could be a categorical feature encoded as numbers, e.g. a 1/0 representation of '
                           'Yes/No values.')
 
-                user_cat = input(f'Should "{column}" actually be treated as categorical? (Y/N): ')
+                user_cat = input(f'Should the feature "{column}" actually be treated as categorical? (Y/N): ')
 
                 if user_cat.lower() == 'y':  # If the user says yes
                     df[column] = df[column].astype(str)  # Convert to string type for encoding
@@ -3285,11 +3285,11 @@ def _encode_core(
     if verbose and not features_to_encode:
         print('\nFinal candidate features for encoding are:')
         print(final_cat_cols)
-        print()
 
     # Process each feature in our list
     for column in final_cat_cols:
         if verbose:
+            print()
             print('-' * 50)  # Visual separator
         print(f'Processing feature: "{column}"')
         if verbose:
