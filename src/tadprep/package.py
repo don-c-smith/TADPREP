@@ -462,7 +462,7 @@ def impute(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = False) 
     Returns
     -------
     pandas.DataFrame
-        The DataFrame with imputed values
+        A new DataFrame with imputed values
 
     Examples
     --------
@@ -511,7 +511,7 @@ def encode(
     Returns
     -------
     pandas.DataFrame
-        The DataFrame with encoded categorical features
+        A new DataFrame with encoded categorical features
 
     Examples
     --------
