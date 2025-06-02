@@ -444,8 +444,14 @@ Interactively encodes categorical features in the DataFrame using specified enco
 '''
 # NOTE: There are many different permutations of this method in terms of arguments that need to be tested
 
-# Default settings first
-df_encoded = tp.encode(df, features_to_encode=None, verbose=True, skip_warnings=False, preserve_features=False)
+# Test default settings first
+# df_encoded = tp.encode(df, features_to_encode=None, verbose=True, skip_warnings=False, preserve_features=False)
+
+# Test non-verbose operation
+# df_encoded = tp.encode(df, features_to_encode=None, verbose=False, skip_warnings=False, preserve_features=False)
+
+# Test skipped warnings mode
+df_encoded = tp.encode(df, features_to_encode=None, verbose=True, skip_warnings=True, preserve_features=False)
 
 print(df_encoded)  # Print check
 
@@ -462,7 +468,8 @@ I think we're good.
 - Are all parameters/modes necessary and/or appropriate?
 
 - What problems or needed changes were identified?
-    -
+    - We should ask about a custom prefix only if the user decides to proceed with encoding a given feature
+    - Make sure of default behavior re: NaN values in non-verbose operation - should be treat as separate category
 '''
 
 # Load sparse data
