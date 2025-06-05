@@ -128,16 +128,6 @@ model.fit(X, y)
 TADPREP provides a suite of interactive methods for data preparation, each focused on a specific aspect of the 
 data preparation process:
 
-#### Core Pipeline Method
-
-`prep_df(df, features_to_encode=None, features_to_scale=None)`
-- Runs the complete TADPREP pipeline on an existing DataFrame
-- Guides users through all preparation steps interactively
-- Takes optional parameters for specifying features to encode and scale
-- Returns the fully prepared DataFrame
-- Ideal for users who want to prepare their data in a single cohesive workflow
-- This method (in essence) runs the full interactive script without the file I/O process
-
 #### Library-Level Informative Methods
 `method_list()`
 - Displays the names and brief descriptions of all callable methods supported by the TADPREP library
@@ -317,7 +307,6 @@ max_features=None)`
 
 - All methods include interactive prompts to guide users through the preparation process
 - Methods with `verbose` parameters allow control over output detail level
-- Each method can be used independently or as part of the full pipeline via `prep_df()`
 - When used without re-assignment, the methods preserve the original DataFrame and return a new dataframe with 
 the applied transformations. However, the user must take care that potential overwrites are handled correctly:
 ```python
@@ -379,34 +368,12 @@ TADPREP is most effectively used as part of a larger data preparation workflow.
 Using the library in a deliberate, as-needed manner allows you to leverage TADPREP's interactive guidance for basic 
 tasks while maintaining the flexibility to implement more sophisticated methods as required for your specific use case.
 
-For example, if you want to use advanced imputation techniques:
-```python
-# 1. Use TADPREP for initial preparation
-import pandas as pd
-import tadprep as tp
-df_initial = tp.prep_df(df)  # Run data-cleaning pipeline, skipping imputation
-
-# 2. Import and apply custom imputation
-from sklearn.impute import KNNImputer
-imputer = KNNImputer(n_neighbors=5)
-df_imputed = pd.DataFrame(imputer.fit_transform(df_initial), 
-                          columns=df_initial.columns)
-```
-
 ### Non-Native Dependencies
 - numpy *(For array operations and infinity checks)*
 - pandas *(Used extensively for dataframe manipulations)*
 - scikit-learn *(Supplies scalers for numerical features)*
 - matplotlib *(For basic plotting)*
 - seaborn *(For generating feature distribution plots)*
-
-### Future Development Ideas/Questions
-- Are we sure the "tagging" feature in `rename_and_tag` is actually useful?
-- Should we build some kind of assumption-testing method, like whether linear models are appropriate, etc.?
-- Are there core capabilities missing from the library? Are we failing to notice a process-need in tabular data prep?
-- What procedural shape and UX should the `prep_df` method have?
-- How are we going to re-conceptualize/reconfigure the CLI pipeline?
-- Testing structure - what's the best programmatic way to test the methods?
 
 ### Acknowledgments
 - Dr. Sean Connin at the Ritchie School of Engineering for his general encouragement and package design advice.
