@@ -518,11 +518,11 @@ def encode(
     >>> import pandas as pd
     >>> import tadprep
     >>> df = pd.DataFrame({'A': ['cat', 'dog', 'horse'], 'B': [1, 2, 3]})
-    >>> df_encoded = tadprep.encode(df)  # Let function identify categorical features
-    >>> df_encoded_specified = tadprep.encode(df, features_to_encode=['A'])  # Specify features to encode
+    >>> df_encoded = tadprep.encode(df)  # Let method identify categorical features automatically
+    >>> df_encoded_specified = tadprep.encode(df, features_to_encode=['A'])  # User-specified features to encode
     >>> df_encoded_quiet = tadprep.encode(df, verbose=False)  # Minimize output
     >>> df_encoded_nowarn = tadprep.encode(df, skip_warnings=True)  # Skip best-practice warnings
-    >>> df_encoded_preserved = tadprep.encode(df, preserve_features=True)  # Keep original features
+    >>> df_encoded_preserved = tadprep.encode(df, preserve_features=True)  # Preserve original features
     """
     # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
