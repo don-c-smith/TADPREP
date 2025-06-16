@@ -532,7 +532,7 @@ def encode(
     if df.empty:
         raise ValueError('Input DataFrame is empty')
 
-    # Validate features_to_encode if provided by user
+    # Validate features_to_encode if list of features is provided by user
     if features_to_encode is not None:
         if not isinstance(features_to_encode, list):
             raise TypeError('features_to_encode must be a list of strings')
@@ -544,7 +544,7 @@ def encode(
             missing = [col for col in features_to_encode if col not in df.columns]
             raise ValueError(f'Features not found in DataFrame: {missing}')
 
-    # Validate preserve_features parameter
+    # Validate input for the preserve_features parameter
     if not isinstance(preserve_features, bool):
         raise TypeError('preserve_features must be a boolean')
 
