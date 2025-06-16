@@ -449,6 +449,8 @@ def feature_stats(df: pd.DataFrame, verbose: bool = True) -> None:
 def impute(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = False) -> pd.DataFrame:
     """
     Interactively imputes missing values in the DataFrame using user-specified simple imputation methods.
+    Supports mean, median, mode, constant value, random sampling, and time-series imputation methods based on
+    feature type and data characteristics.
 
     Parameters
     ----------
