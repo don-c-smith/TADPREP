@@ -3299,8 +3299,9 @@ def _encode_core(
         null_count = df[column].isnull().sum()
         null_detected = null_count > 0
 
-        # Define default missing value strategy, which is to ignore them and leave them as NaN values
-        missing_strat = 'ignore'
+        # Define default missing value strategy
+        # In non-verbose mode, default to 'category' to treat missing values as a separate category
+        missing_strat = 'category' if not verbose else 'ignore'
 
         if null_detected and not skip_warnings:
             # Check to see if user wants to proceed
@@ -3337,9 +3338,8 @@ def _encode_core(
                     else:
                         print('Invalid choice. Please enter 1, 2, 3, or 4.')
 
-            # Default to 'ignore' strategy in non-verbose mode
+            # In non-verbose mode, missing_strat is already set to 'category' by default
             else:
-                missing_strat = 'ignore'
                 if input('Continue encoding this feature? (Y/N): ').lower() != 'y':
                     continue
 
@@ -3400,19 +3400,6 @@ def _encode_core(
                     if plt.get_fignums():  # If any figures are open
                         plt.close('all')  # Close all figures
 
-        # Let user customize the encoding prefix for a feature
-        prefix = column  # Default prefix is the column name
-        if verbose:
-            user_prefix = input(f'\nWould you like to use a custom prefix for the encoded columns? (Y/N): ')
-            if user_prefix.lower() == 'y':
-                prefix_value = input(f'Enter custom prefix (default: "{column}"): ').strip()
-                if not prefix_value:  # If user enters empty string, use default
-                    prefix_value = column
-                prefix = prefix_value  # Set prefix to user-provided value
-
-        # Clean the prefix regardless of whether it was customized
-        prefix = clean_col_name(prefix)
-
         if verbose:
             # Fetch encoding method preference from user
             print('\nTADPREP-Supported Encoding Methods:')
@@ -3435,6 +3422,19 @@ def _encode_core(
                 if verbose:
                     print(f'\nSkipping encoding for feature "{column}".')
                 continue
+
+            # Now that user has chosen to encode, ask about custom prefix
+            prefix = column  # Default prefix is the column name
+            if verbose:
+                user_prefix = input(f'\nWould you like to use a custom prefix for the encoded columns? (Y/N): ')
+                if user_prefix.lower() == 'y':
+                    prefix_value = input(f'Enter custom prefix (default: "{column}"): ').strip()
+                    if not prefix_value:  # If user enters empty string, use default
+                        prefix_value = column
+                    prefix = prefix_value  # Set prefix to user-provided value
+
+            # Clean the prefix regardless of whether it was customized
+            prefix = clean_col_name(prefix)
 
             # Determine feature to encode based on missing value strategy
             feature_data = df[column]
