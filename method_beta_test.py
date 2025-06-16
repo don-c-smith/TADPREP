@@ -485,7 +485,7 @@ I think we're good.
 # Load sparse data
 df_sparse = pd.read_csv(r'C:\Users\doncs\Documents\GitHub\TADPREP\data\sample_data_sparse.csv')
 # Print check
-print(df_sparse)
+# print(df_sparse)
 
 '''
 Testing the impute method:
