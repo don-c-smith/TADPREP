@@ -459,10 +459,10 @@ Interactively encodes categorical features in the DataFrame using specified enco
 # preserve_features=False)
 
 # Test feature preservation mode
-df_encoded = tp.encode(df, features_to_encode=['clarity', 'season'], verbose=True, skip_warnings=False,
-                       preserve_features=True)
-
-print(df_encoded)  # Print check
+# df_encoded = tp.encode(df, features_to_encode=['clarity', 'season'], verbose=True, skip_warnings=False,
+#                        preserve_features=True)
+#
+# print(df_encoded)  # Print check
 
 '''
 Questions:
@@ -485,4 +485,37 @@ I think we're good.
 # Load sparse data
 df_sparse = pd.read_csv(r'C:\Users\doncs\Documents\GitHub\TADPREP\data\sample_data_sparse.csv')
 # Print check
-# print(df_sparse)
+print(df_sparse)
+
+'''
+Testing the impute method:
+Interactively imputes missing values in the DataFrame using user-specified simple imputation methods.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The DataFrame containing missing values to impute
+    verbose : bool, default = True
+        Controls whether detailed process information is displayed
+    skip_warnings : bool, default = False
+        Controls whether missingness threshold warnings are displayed
+
+    Returns
+    -------
+    pandas.DataFrame
+        A new DataFrame with imputed values
+'''
+# Test default behavior first
+df_imputed = tp.impute(df_sparse, verbose=True, skip_warnings=False)
+
+# Test non-verbose operation
+# df_imputed = tp.impute(df_sparse, verbose=False, skip_warnings=False)
+
+# Test skipped warnings operation
+# df_imputed = tp.impute(df_sparse, verbose=True, skip_warnings=True)
+
+# Test minimal-weight operation
+# df_imputed = tp.impute(df_sparse, verbose=False, skip_warnings=True)
+# Print check
+
+print(df_imputed)
