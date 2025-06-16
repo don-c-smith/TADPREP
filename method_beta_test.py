@@ -478,7 +478,7 @@ I think we're good.
 
 - What problems or needed changes were identified?
     - We should ask about a custom prefix only if the user decides to proceed with encoding a given feature
-    - Make sure of default behavior re: NaN values in non-verbose operation - should be treat as separate category
+    - Make sure of default behavior re: NaN values in non-verbose operation - should be treated as separate category
     - Make sure 'drop rows with missing values' functionality is working
 '''
 
